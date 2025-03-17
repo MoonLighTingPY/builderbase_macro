@@ -19,7 +19,7 @@ screen_width, screen_height = pyautogui.size()
 
 # Determine if we should use high resolution images
 use_2k_images = screen_width > 1920 or screen_height > 1080
-image_dir = "2k/" if use_2k_images else ""
+image_dir = "2k/" if use_2k_images else "fullhd/"
 print(f"Screen resolution: {screen_width}x{screen_height}, using {'2K' if use_2k_images else 'standard'} images")
 
 # Define regions
@@ -41,14 +41,13 @@ IMAGE_PATHS = {
     "elixir_cart_empty": f"{image_dir}elixir_cart_empty.png",
     "elixir_cart_empty_battle": f"{image_dir}elixir_cart_empty_battle.png",
     "elixir_cart_full_battle": f"{image_dir}elixir_cart_full_battle.png",
-    "elixir_cart_not_empty": f"{image_dir}elixir_cart_not_empty.bmp",
+    "elixir_cart_not_empty": f"{image_dir}elixir_cart_not_empty.png",
     "collect_full": f"{image_dir}collect_full.png",
     "collect_empty": f"{image_dir}collect_empty.png",
     "close_elixir": f"{image_dir}close_elixir.png",
     "battle_start": f"{image_dir}find_now.png",
     "battle_verify": f"{image_dir}battle_verify.png",
     "close_notif": f"{image_dir}close_notif.png",
-    "in_search": f"{image_dir}in_search.bmp",
     "warplace": [f"{image_dir}{img}" for img in ["pad0.png", "pad1.png", "pad2.png", "grass0.png", "stones0.png"]]
 }
 
