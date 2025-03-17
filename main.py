@@ -12,6 +12,11 @@ pydirectinput.PAUSE = 0
 # Get screen size
 screen_width, screen_height = pyautogui.size()
 
+# Determine if we should use high resolution images
+use_2k_images = screen_width > 1920 or screen_height > 1080
+image_dir = "2k/" if use_2k_images else ""
+print(f"Screen resolution: {screen_width}x{screen_height}, using {'2K' if use_2k_images else 'standard'} images")
+
 # Define regions
 regions = {
     "top_right": (screen_width // 2, 0, screen_width, screen_height // 2),
@@ -24,21 +29,22 @@ regions = {
 
 # Paths to image assets
 IMAGE_PATHS = {
-    "start_app": "start_app.png",
-    "battle_open": "attack.png",
-    "elixir_cart_really_full": "elixir_cart_really_full.png",
-    "elixir_cart_full": "elixir_cart_full.png",
-    "elixir_cart_empty": "elixir_cart_empty.png",
-    "elixir_cart_empty_battle": "elixir_cart_empty_battle.png",
-    "elixir_cart_full_battle": "elixir_cart_full_battle.png",
-    "elixir_cart_not_empty": "elixir_cart_not_empty.bmp",
-    "collect_full": "collect_full.png",
-    "collect_empty": "collect_empty.png",
-    "close_elixir": "close_elixir.png",
-    "battle_start": "find_now.png",
-    "close_notif": "close_notif.png",
-    "in_search": "in_search.bmp",
-    "warplace": ["pad0.png", "pad1.png", "pad2.png", "grass0.png", "stones0.png"]
+    "start_app": f"{image_dir}start_app.png",
+    "battle_open": f"{image_dir}attack.png",
+    "elixir_cart_really_full": f"{image_dir}elixir_cart_really_full.png",
+    "elixir_cart_full": f"{image_dir}elixir_cart_full.png",
+    "elixir_cart_empty": f"{image_dir}elixir_cart_empty.png",
+    "elixir_cart_empty_battle": f"{image_dir}elixir_cart_empty_battle.png",
+    "elixir_cart_full_battle": f"{image_dir}elixir_cart_full_battle.png",
+    "elixir_cart_not_empty": f"{image_dir}elixir_cart_not_empty.bmp",
+    "collect_full": f"{image_dir}collect_full.png",
+    "collect_empty": f"{image_dir}collect_empty.png",
+    "close_elixir": f"{image_dir}close_elixir.png",
+    "battle_start": f"{image_dir}find_now.png",
+    "battle_verify": f"{image_dir}battle_verify.png",
+    "close_notif": f"{image_dir}close_notif.png",
+    "in_search": f"{image_dir}in_search.bmp",
+    "warplace": [f"{image_dir}{img}" for img in ["pad0.png", "pad1.png", "pad2.png", "grass0.png", "stones0.png"]]
 }
 
 # Define counters
@@ -46,6 +52,7 @@ elixir_attempts = 0
 elixir_failures = 0
 fatal_errors = 0
 all_exceptions = []
+elixir_check_counter = 0
 
 warplace_attempts = {path: 0 for path in IMAGE_PATHS["warplace"]}
 warplace_failures = {path: 0 for path in IMAGE_PATHS["warplace"]}
@@ -91,10 +98,6 @@ def deploy_troops(location, delay=1):
     pyautogui.moveTo(location)
     pyautogui.click(location)
     time.sleep(delay)
-    for key in ["q", "Q", "q", "1", "2", "3", "4", "5", "6"]:
-        time.sleep(delay)
-        pydirectinput.press(key)
-        pyautogui.click()
     for key in ["q", "Q", "q", "1", "2", "3", "4", "5", "6"]:
         time.sleep(delay)
         pydirectinput.press(key)
@@ -147,51 +150,62 @@ def monitor_keyboard():
         time.sleep(0.1)
 
 def main():
-    global stop_flag, fatal_errors
+    global stop_flag, fatal_errors, elixir_check_counter
     keyboard_thread = threading.Thread(target=monitor_keyboard, daemon=True)
     keyboard_thread.start()
 
     while not stop_flag:
         try:
-           if click_image(IMAGE_PATHS["start_app"], region=regions["top_right"], confidence=0.9):
+            # Increment counter at the start of each loop
+            elixir_check_counter += 1
+            print(f"Counter: {elixir_check_counter}")  # Debug info
+            
+            # Check for elixir every 10 times
+            should_check_elixir = elixir_check_counter % 10 == 0
+            
+            if click_image(IMAGE_PATHS["start_app"], region=regions["top_right"], confidence=0.9):
                 if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True):
-                    # Scroll to refresh the area
-                    for _ in range(10):
-                        pyautogui.scroll(25000)
-                        time.sleep(0.05)
-                    pyautogui.moveTo(200, 1070)
-                    for _ in range(10):
-                        pyautogui.scroll(-25000)
-                        time.sleep(0.05)
-                    time.sleep(0.4)
+                    # Check for elixir if it's time (every 10 iterations)
+                    if should_check_elixir:
+                        print("Checking for elixir this iteration")
+                        # Scroll to find the elixir cart
+                        for _ in range(10):
+                            pyautogui.scroll(25000)
+                            time.sleep(0.05)
+                        pyautogui.moveTo(200, 1070)
+                        for _ in range(10):
+                            pyautogui.scroll(-25000)
+                            time.sleep(0.05)
+                        time.sleep(0.4)
+                        if not check_elixir():
+                            pyautogui.hotkey('alt', 'f4')
+                            time.sleep(0.8)
+                            continue  # Restart the main loop
+                        click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"])
+                    
+                    # Reset counter to prevent integer overflow
+                    if elixir_check_counter >= 100:
+                        elixir_check_counter = 0
 
-                    if not check_elixir():
-                        pyautogui.hotkey('alt', 'f4')
-                        time.sleep(0.8)
-                        continue  # Restart the main loop
-
-                    click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"])
                     click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"])
                     click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"])
-                    time.sleep(2)
 
                     start_time = time.time()
-                    exit_outer_loop = False  # Moved flag initialization here
-                    while click_image(IMAGE_PATHS["in_search"], region=regions["bottom_half"], loop=False):
-                        if time.time() - start_time > 10:
-                            print("in_search detected for more than 10 seconds. Exiting...")
-                            time.sleep(0.8)
+                    exit_outer_loop = False
+                    while True:
+                        if click_image(IMAGE_PATHS["battle_verify"], region=regions["bottom_half"], loop=False, parsemode=True):
+                            # Found battle_verify, we can proceed
+                            break
+                        elif time.time() - start_time > 10:
+                            print("battle_verify not found for more than 10 seconds. Exiting...")
                             exit_outer_loop = True  # Set flag to exit
                             break  # Break out of while loop
-                        time.sleep(0.5)
                     
                     if exit_outer_loop:  # Check if we need to restart main loop
                         continue
 
-                    time.sleep(1)
                     # Flag to indicate if we need to break out of the outer loop
                     exit_outer_loop = False
-                    time.sleep(1)
                     for path in IMAGE_PATHS["warplace"]:
                         if exit_outer_loop:
                             break
@@ -212,7 +226,7 @@ def main():
 
                     time.sleep(0.6)
                     pyautogui.hotkey('alt', 'f4')
-                    time.sleep(1.2)
+                    time.sleep(0.8)
 
                     # Display failure rates and attempts
                     print("\n[STATS] Failure Rates and Attempts:")
