@@ -1,1 +1,6 @@
-pycryptodome==3.21.0
+keyboard==0.13.5
+mss==10.0.0
+numpy==2.2.4
+opencv_python==4.10.0.84
+PyAutoGUI==0.9.54
+PyDirectInput==1.0.4

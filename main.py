@@ -5,6 +5,11 @@ import threading
 import keyboard
 import sys
 import os
+import cv2
+import numpy as np
+from mss import mss
+
+sct = mss()
 
 pyautogui.PAUSE = 0
 pydirectinput.PAUSE = 0
@@ -71,28 +76,47 @@ def click_image(image_path, region=None, confidence=0.8, parsemode=False, loop=T
                 return True
     else:
         return click_image_core(image_path, region, confidence, parsemode)
+        
 
 def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
     try:
-        location = pyautogui.locateOnScreen(image_path, confidence=confidence, region=region)
-        if location:
-            center_coords = pyautogui.center(location)
+        # Load the template image
+        template = cv2.imread(image_path)
+        if template is None:
+            print(f"Could not load image: {image_path}")
+            return False
+            
+        # Capture screen region
+        monitor = {"top": region[1], "left": region[0], "width": region[2]-region[0], "height": region[3]-region[1]} if region else {"top": 0, "left": 0, "width": screen_width, "height": screen_height}
+        screenshot = np.array(sct.grab(monitor))
+        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
+        
+        # Match template
+        result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        
+        if max_val >= confidence:
+            # Calculate center position
+            h, w = template.shape[:2]
+            center_x = max_loc[0] + w//2 + (region[0] if region else 0)
+            center_y = max_loc[1] + h//2 + (region[1] if region else 0)
+            
             if not parsemode:
-                pyautogui.click(center_coords)
+                pyautogui.click(center_x, center_y)
                 print(f"Success clicking image {image_path}")
                 return True
             else:
-                return center_coords
+                return (center_x, center_y)
         else:
             current_time = time.time()
             last_time = error_last_print_time.get(image_path, 0)
             if current_time - last_time > ERROR_COOLDOWN:
                 print(f"Image {image_path} not found.")
                 error_last_print_time[image_path] = current_time
+            return False
     except Exception as e:
-        #all_exceptions.append(f"Error locating image {image_path}: {e}")
         print(f"Error locating image {image_path}: {e}")
-        pass
+        return False
 
 def deploy_troops(location, delay=1):
     pyautogui.moveTo(location)
