@@ -278,17 +278,17 @@ def main():
                     print("First village battle didn't advance to the second village. Returning home.")
                     break
 
-                # The battle advanced to the second village, as the return home button is not found but new troops are found
-                # Deplouy troops at the second village
-                find_warplace_and_deploy_troops()
-                print("Battle advanced to the second village.")
+            # The battle advanced to the second village, as the return home button is not found but new troops are found
+            # Deplouy troops at the second village
+            find_warplace_and_deploy_troops()
+            print("Battle advanced to the second village.")
 
-                # Wait for the second battle to finish. This is done by looking for the return home button
-                # If the return home button is not found, we assume the battle is still going on in the second village
-                while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8):
-                    print("Second village battle not finished yet.")
-                    time.sleep(5)
-                    pydirectinput.press("q")
+            # Wait for the second battle to finish. This is done by looking for the return home button
+            # If the return home button is not found, we assume the battle is still going on in the second village
+            while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8):
+                print("Second village battle not finished yet.")
+                time.sleep(5)
+                pydirectinput.press("q")
 
                 # Try to click the return home button once more just to be sure (lol)
                 click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8)
