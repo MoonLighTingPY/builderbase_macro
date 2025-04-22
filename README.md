@@ -62,6 +62,7 @@ pip install -r requirements.txt
 ```
 📦 builderbase_macro/
 ├── main.py                  # Main automation script
+├── requirements.txt         # Dependencies for the script
 ├── 2k/                      # Assets for high-resolution displays
 └── fullhd/                  # Assets for standard Full HD displays
     ├── buttons/             # UI button images
@@ -73,6 +74,6 @@ pip install -r requirements.txt
 
 ## ⚠️ Disclaimer
 
+- Automation tools may **violate Supercell's Terms of Service!**
 - This script is for **educational purposes only**
-- Automation tools may **violate Supercell's Terms of Service**
 - Use at your own risk
