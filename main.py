@@ -224,8 +224,8 @@ def main():
         elixir_check_counter += 1
         print(f"Elixir Counter: {elixir_check_counter}")  # Debug info
         
-        # Check for elixir every 10 times
-        should_check_elixir = elixir_check_counter % 10 == 0
+        # Check for elixir every 5 times
+        should_check_elixir = elixir_check_counter % 5 == 0
         
         # Check if the game is open in the builder base by looking for the attack button
         if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True):
@@ -246,7 +246,7 @@ def main():
                 click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"])
             
             # Reset counter to prevent integer overflow
-            if elixir_check_counter >= 100:
+            if elixir_check_counter >= 10:
                 elixir_check_counter = 0
             
             # Press the attack button to open the battle menu
