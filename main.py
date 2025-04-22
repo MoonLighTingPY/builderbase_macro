@@ -11,7 +11,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import keyboard
 
-
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 
 # Initialize mss for screen capture
@@ -49,33 +55,33 @@ regions = {
 # Paths to image assets
 IMAGE_PATHS = {
     # Elixir Cart Images
-    "elixir_cart_really_full": f"{image_dir}elixir_cart/elixir_cart_really_full.png",
-    "elixir_cart_full": f"{image_dir}elixir_cart/elixir_cart_full.png",
-    "elixir_cart_empty": f"{image_dir}elixir_cart/elixir_cart_empty.png",
-    "elixir_cart_empty_battle": f"{image_dir}elixir_cart/elixir_cart_empty_battle.png",
-    "elixir_cart_full_battle": f"{image_dir}elixir_cart/elixir_cart_full_battle.png",
-    "elixir_cart_not_empty": f"{image_dir}elixir_cart/elixir_cart_not_empty.png",
+    "elixir_cart_really_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_really_full.png"),
+    "elixir_cart_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_full.png"),
+    "elixir_cart_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty.png"),
+    "elixir_cart_empty_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty_battle.png"),
+    "elixir_cart_full_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_full_battle.png"),
+    "elixir_cart_not_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_not_empty.png"),
     
     # Button Images
-    "collect_full": f"{image_dir}buttons/collect_full.png",
-    "collect_empty": f"{image_dir}buttons/collect_empty.png",
-    "close_elixir": f"{image_dir}buttons/close_elixir.png",
-    "battle_open": f"{image_dir}buttons/attack.png",
-    "battle_start": f"{image_dir}buttons/find_now.png",
-    "end_battle": f"{image_dir}buttons/end_battle.png",
-    "return_home": f"{image_dir}buttons/return_home.png",
-    "surrender": f"{image_dir}buttons/surrender.png",
-    "confirm_surrender": f"{image_dir}/buttons/confirm_surrender.png",
+    "collect_full": resource_path(f"{image_dir}buttons/collect_full.png"),
+    "collect_empty": resource_path(f"{image_dir}buttons/collect_empty.png"),
+    "close_elixir": resource_path(f"{image_dir}buttons/close_elixir.png"),
+    "battle_open": resource_path(f"{image_dir}buttons/attack.png"),
+    "battle_start": resource_path(f"{image_dir}buttons/find_now.png"),
+    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
+    "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
+    "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
+    "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
 
     # Other Images
-    "start_app": f"{image_dir}start_app.png",
-    "battle_verify": f"{image_dir}battle_verify.png",
-    "attack_cooldown": f"{image_dir}attack_cooldown.png",
-    "second_village": f"{image_dir}second_battle.png",
-    "troop_deployed": f"{image_dir}troop_deployed.png",
+    "start_app": resource_path(f"{image_dir}start_app.png"),
+    "battle_verify": resource_path(f"{image_dir}battle_verify.png"),
+    "attack_cooldown": resource_path(f"{image_dir}attack_cooldown.png"),
+    "second_village": resource_path(f"{image_dir}second_battle.png"),
+    "troop_deployed": resource_path(f"{image_dir}troop_deployed.png"),
 
     # Places to deploy troops
-    "warplace": [os.path.normpath(os.path.join(image_dir, "warplace", img)) for img in os.listdir(os.path.join(image_dir, "warplace")) if img.endswith(".png")]
+    "warplace": [resource_path(os.path.join(image_dir, "warplace", img)) for img in os.listdir(resource_path(os.path.join(image_dir, "warplace"))) if img.endswith(".png")]
 }
 
 
