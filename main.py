@@ -229,6 +229,7 @@ def main():
         
         # Check if the game is open in the builder base by looking for the attack button
         if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True):
+            time.sleep(0.3)
             # Check for elixir if it's time (every 10 iterations)
             if should_check_elixir:
                 print("Checking for elixir this iteration")
