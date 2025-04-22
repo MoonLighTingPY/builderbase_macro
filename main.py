@@ -15,11 +15,12 @@ pydirectinput.PAUSE = 0
 # Get screen size
 screen_width, screen_height = pyautogui.size()
 
-elixir_check_counter = 0 # Counter for elixir check so we don't сheck elixir after every battle so we can save time
-elixir_check_frequency = 2 # Check elixir every 5 battles
-
 error_last_print_time = {} # Track last error message time for each image
 ERROR_COOLDOWN = 5  # Time in seconds before printing the same error message again
+
+elixir_check_counter = 0 # Counter for elixir check so we don't сheck elixir after every battle so we can save time
+elixir_check_frequency = 2 # Check elixir every N battles
+last_ability_time = 0  # Track when we last used the hero ability
 
 # Determine if we should use high resolution images
 use_2k_images = screen_width > 1920 or screen_height > 1080
@@ -107,7 +108,7 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
         best_scale = 1.0
         
         # Try different scales to account for different resolutions
-        for scale in [1.0, 0.75, 1.25, 0.5, 1.5]:
+        for scale in [1.0]:
             # Resize the template according to the scale
             width = int(template.shape[1] * scale)
             height = int(template.shape[0] * scale)
@@ -246,6 +247,13 @@ def find_warplace_and_deploy_troops():
                 deploy_troops((random_x, random_y), delay=0.1)
                 return  # Exit after success
 
+def cast_hero_ability():
+    # Periodically cast the hero ability to help the troops
+    global last_ability_time
+    current_time = time.time()
+    if current_time - last_ability_time >= 5:
+        pydirectinput.press("q")
+        last_ability_time = current_time
 
 
 def main():
@@ -258,11 +266,12 @@ def main():
             time.sleep(0.3)
         # Check for elixir every N times
         
-        if elixir_check_counter == elixir_check_frequency:
+        elixir_check_counter += 1
+        if elixir_check_counter >= elixir_check_frequency:
             elixir_check_counter = 0
             print("Checking for elixir this iteration")
             check_elixir()
-        elixir_check_counter += 1
+       
 
         # Press the attack button to open the battle menu
         click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
@@ -287,34 +296,32 @@ def main():
 
         # Wait for the first battle to finish. This is done by looking for new troops to appear in the menu
         # If the troops are not found, we assume the battle is still going on in the first village
-        while not click_image(IMAGE_PATHS["second_village"], loop=False, confidence=0.7):
-            battle_finished = False # Flag to indicate if we are in the first village battle
+        battle_finished = False # Flag to indicate if we are in the first village battle
+        while not click_image(IMAGE_PATHS["second_village"], loop=False, confidence=0.7, parsemode=True):
             print("First village battle is not finished yet.")
-            # Perodically cast the hero ability to help the troops1
-            time.sleep(5)
-            pydirectinput.press("q")
-            # If return home button appeared before the new troops - it means the battle is over and didn't advance to the second village
+            
+            # Check for return home button
             if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                 battle_finished = True
                 print("First village battle didn't advance to the second village. Returning home.")
                 break
+            cast_hero_ability()
 
         # Battle is still going on
         if battle_finished == False:
             # The battle advanced to the second village, as the return home button is not found but new troops are found
-            # Deplouy troops at the second village
-            find_warplace_and_deploy_troops()
+            # Deploy troops at the second village
             print("Battle advanced to the second village.")
+            find_warplace_and_deploy_troops()
 
             # Wait for the second battle to finish. This is done by looking for the return home button
             # If the return home button is not found, we assume the battle is still going on in the second village
             while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
-                print("Second village battle not finished yet.")
-                time.sleep(5)
-                pydirectinput.press("q")
+                print("Second village battle not finished yet.")               
+                cast_hero_ability()
 
-                # Try to click the return home button once more just to be sure (lol)
-                click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
+            # Try to click the return home button once more just to be sure (lol)
+            click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
 
 # After so many years, i still DON'T KNOW why this is needed, but it is
 if __name__ == "__main__":
