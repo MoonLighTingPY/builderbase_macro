@@ -1,60 +1,78 @@
-# Clash of Clans Builder Base Resources Farming Script
+# 💥 Clash of Clans: Builder Base Resources Farming Script
 
-An automated script on python for Clash of Clans to farm gold and elixir in Builder Base. Fully automated.
+> Fully automated resource farming using **Night Witches** in Builder Base  
+> ⚠️ *Works only with English UI and Night Witches in the army camp (the most effective and used troop for farming anyway)*
 
-```Works only with Night Witches(The most effective and used troop for farming anyway)```
+---
 
-## Features
+## 🚀 Features
 
-- **No force-closing** - No need to wait till "troops finish the battle"
-- **Even farms Elixir!** - Detects and collects elixir from elixir carts
-- **Resolution Support** - Works with both standard (1920x1080) and QuadHD displays
-- **Fully Automated** - Start the script, open Clash of Clans, and enjoy!
+- ✅ **No force-closing** – No need to wait for battles to end
+- 💧 **Elixir Support** – Detects and collects elixir from elixir cart 
+- 🖥️ **Resolution Friendly** – Supports both **Full HD (1920x1080)** and **Quad HD** screens  
+- 🤖 **Fully Automated** – Just run the script, open Clash of Clans, and chill  
 
+---
 
+## 🛠 Installation
 
-## Installation
+```bash
+git clone https://github.com/MoonLighTingPY/builderbase_macro.git
+cd builderbase_macro
+pip install -r requirements.txt
+```
 
-1. Clone this repository
-   ```bash
-   git clone https://github.com/MoonLighTingPY/builderbase_macro.git
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-## Usage
+## ⚙️ Setup (Pre-requirements)
 
-1. Make sure Clash of Clans is open in fullscreen you are in the builder base.
-2. Alt + tab to the terminal
+1. Set Clash of Clans language to: **English**
+2. Ensure your army camp has **8 Night Witches**
+
+> 🔥 **DO NOT SKIP THEESE STEPS!**  
+> The script uses English UI elements and relies on Night Witches for detection.
+
+---
+
+## ▶️ Usage
+
+1. Open Clash of Clans in **fullscreen** and go to the **Builder Base**
+2. `Alt + Tab` to your terminal
 3. Run the script:
    ```bash
    python main.py
    ```
-4. Alt + tab to Clash of clans
+4. `Alt + Tab` back to Clash of Clans  
+5. Sit back and let it farm 😎
 
-## How It Works
+---
 
-The script uses computer vision to:
-1. Detect elixir cart status and collect when available (every 10 iterations)
-2. Find and click the attack button
-3. Wait for battle to be ready (handles cooldowns)
-4. Deploy troops automatically in both villages
-5. Return home after battle is complete
-6. Repeat the process
+## 🧠 How It Works
 
-## Structure
+1. Collect elixir every N iteration
+2. Finds the match
+3. Automatically deploys troops in both villages
+4. Returns home when battle ends 
+6. Repeats the cycle endlessly
 
-- **main.py** - Main automation script
-- **2k/** - Image assets for high-resolution displays
-- **fullhd/** - Image assets for standard displays
-  - **/buttons** - UI button images
-  - **/elixir_cart** - Elixir collector images
-  - **/warplace** - Battle deployment location images
+---
 
-## Disclaimer
+## 📁 Project Structure
 
-- This tool is for educational purposes only.
-- Using automation scripts may violate Supercell's Terms of Service.
+```
+📦 builderbase_macro/
+├── main.py                  # Main automation script
+├── 2k/                      # Assets for high-resolution displays
+└── fullhd/                  # Assets for standard Full HD displays
+    ├── buttons/             # UI button images
+    ├── elixir_cart/         # Elixir collection images
+    └── warplace/            # Battle deployment location images
+```
+
+---
+
+## ⚠️ Disclaimer
+
+- This script is for **educational purposes only**
+- Automation tools may **violate Supercell's Terms of Service**
 - Use at your own risk
