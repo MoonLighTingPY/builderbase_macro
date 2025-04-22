@@ -50,10 +50,10 @@ pip install -r requirements.txt
 ## 🧠 How It Works
 
 1. Collect elixir every N iteration
-2. Finds the match
-3. Automatically deploys troops in both villages
-4. Returns home when battle ends 
-6. Repeats the cycle endlessly
+2. Find the match
+3. Automatically deploy troops in both villages
+4. Return home when battle ends 
+6. Repeat the cycle endlessly
 
 ---
 
