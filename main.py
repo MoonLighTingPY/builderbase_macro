@@ -12,25 +12,7 @@ from tkinter import ttk, messagebox
 import keyboard
 
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
 
-    return os.path.join(base_path, relative_path)
-
-sys.stdout = open("bot_log.txt", "w", encoding="utf-8")
-sys.stderr = sys.stdout
-
-def handle_exception(exc_type, exc_value, exc_traceback):
-    import traceback
-    traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
-    sys.stdout.flush()
-
-sys.excepthook = handle_exception
 
 # Initialize mss for screen capture
 sct = mss()
@@ -67,33 +49,33 @@ regions = {
 # Paths to image assets
 IMAGE_PATHS = {
     # Elixir Cart Images
-    "elixir_cart_really_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_really_full.png"),
-    "elixir_cart_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_full.png"),
-    "elixir_cart_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty.png"),
-    "elixir_cart_not_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_not_empty.png"),
-    "elixir_cart_empty_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty_battle.png"),
-    "elixir_cart_full_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_full_battle.png"),
-
+    "elixir_cart_really_full": f"{image_dir}elixir_cart/elixir_cart_really_full.png",
+    "elixir_cart_full": f"{image_dir}elixir_cart/elixir_cart_full.png",
+    "elixir_cart_empty": f"{image_dir}elixir_cart/elixir_cart_empty.png",
+    "elixir_cart_empty_battle": f"{image_dir}elixir_cart/elixir_cart_empty_battle.png",
+    "elixir_cart_full_battle": f"{image_dir}elixir_cart/elixir_cart_full_battle.png",
+    "elixir_cart_not_empty": f"{image_dir}elixir_cart/elixir_cart_not_empty.png",
+    
     # Button Images
-    "collect_full": resource_path(f"{image_dir}buttons/collect_full.png"),
-    "collect_empty": resource_path(f"{image_dir}buttons/collect_empty.png"),
-    "close_elixir": resource_path(f"{image_dir}buttons/close_elixir.png"),
-    "battle_open": resource_path(f"{image_dir}buttons/attack.png"),
-    "battle_start": resource_path(f"{image_dir}buttons/find_now.png"),
-    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
-    "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
-    "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
-    "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
+    "collect_full": f"{image_dir}buttons/collect_full.png",
+    "collect_empty": f"{image_dir}buttons/collect_empty.png",
+    "close_elixir": f"{image_dir}buttons/close_elixir.png",
+    "battle_open": f"{image_dir}buttons/attack.png",
+    "battle_start": f"{image_dir}buttons/find_now.png",
+    "end_battle": f"{image_dir}buttons/end_battle.png",
+    "return_home": f"{image_dir}buttons/return_home.png",
+    "surrender": f"{image_dir}buttons/surrender.png",
+    "confirm_surrender": f"{image_dir}/buttons/confirm_surrender.png",
 
     # Other Images
-    "start_app": resource_path(f"{image_dir}start_app.png"),
-    "second_battle": resource_path(f"{image_dir}second_battle.png"),
-    "troop_deployed": resource_path(f"{image_dir}troop_deployed.png"),
-    "attack_cooldown": resource_path(f"{image_dir}attack_cooldown.png"),
-    "battle_verify": resource_path(f"{image_dir}battle_verify.png"),
+    "start_app": f"{image_dir}start_app.png",
+    "battle_verify": f"{image_dir}battle_verify.png",
+    "attack_cooldown": f"{image_dir}attack_cooldown.png",
+    "second_village": f"{image_dir}second_battle.png",
+    "troop_deployed": f"{image_dir}troop_deployed.png",
 
-    # Warplace Images (example for 0-24, add more if needed)
-    **{f"warplace_{i}": resource_path(f"{image_dir}warplace/{i}.png") for i in range(25)},
+    # Places to deploy troops
+    "warplace": [os.path.normpath(os.path.join(image_dir, "warplace", img)) for img in os.listdir(os.path.join(image_dir, "warplace")) if img.endswith(".png")]
 }
 
 
@@ -120,7 +102,7 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
         # Create a thread-local instance of mss for thread safety
         with mss() as thread_sct:
             # Load the template image
-            template = cv2.imread(resource_path(f"{image_dir}attack_cooldown.png"))
+            template = cv2.imread(image_path)
             if template is None:
                 print(f"Could not load image: {image_path}")
                 return False
