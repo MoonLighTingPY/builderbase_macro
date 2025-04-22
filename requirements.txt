@@ -5,3 +5,4 @@ opencv_python==4.10.0.84
 PyAutoGUI==0.9.54
 PyDirectInput==1.0.4
 wheel==0.45.1
+pyinstaller
