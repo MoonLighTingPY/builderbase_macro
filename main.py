@@ -85,16 +85,7 @@ def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=
             if click_image_core(image_path, region, confidence, parsemode):
                 return True
     else:
-        return click_image_core(image_path, region, confidence, parsemode)
-        
-
-def click_image(image_path, region=None, confidence=0.8, parsemode=False, loop=True):
-    if loop:
-        while True:
-            if click_image_core(image_path, region, confidence, parsemode):
-                return True
-    else:
-        return click_image_core(image_path, region, confidence, parsemode)
+        return click_image_core(image_path, region, confidence, parsemode)   
         
 
 def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
@@ -116,7 +107,7 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
         best_scale = 1.0
         
         # Try different scales to account for different resolutions
-        for scale in np.linspace(1.0, 1.0, 1):
+        for scale in [1.0, 0.75, 1.25, 0.5, 1.5]:
             # Resize the template according to the scale
             width = int(template.shape[1] * scale)
             height = int(template.shape[0] * scale)
@@ -272,7 +263,7 @@ def main():
             print("Checking for elixir this iteration")
             check_elixir()
         elixir_check_counter += 1
-           
+
         # Press the attack button to open the battle menu
         click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
         time.sleep(0.3)
