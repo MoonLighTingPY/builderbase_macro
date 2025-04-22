@@ -2,9 +2,35 @@ import pydirectinput
 import pyautogui
 import time
 import os
+import sys
 import cv2
 import numpy as np
 from mss import mss
+import threading
+import tkinter as tk
+from tkinter import ttk, messagebox
+import keyboard
+
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+sys.stdout = open("bot_log.txt", "w", encoding="utf-8")
+sys.stderr = sys.stdout
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    import traceback
+    traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
+    sys.stdout.flush()
+
+sys.excepthook = handle_exception
 
 # Initialize mss for screen capture
 sct = mss()
@@ -41,33 +67,33 @@ regions = {
 # Paths to image assets
 IMAGE_PATHS = {
     # Elixir Cart Images
-    "elixir_cart_really_full": f"{image_dir}elixir_cart/elixir_cart_really_full.png",
-    "elixir_cart_full": f"{image_dir}elixir_cart/elixir_cart_full.png",
-    "elixir_cart_empty": f"{image_dir}elixir_cart/elixir_cart_empty.png",
-    "elixir_cart_empty_battle": f"{image_dir}elixir_cart/elixir_cart_empty_battle.png",
-    "elixir_cart_full_battle": f"{image_dir}elixir_cart/elixir_cart_full_battle.png",
-    "elixir_cart_not_empty": f"{image_dir}elixir_cart/elixir_cart_not_empty.png",
-    
+    "elixir_cart_really_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_really_full.png"),
+    "elixir_cart_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_full.png"),
+    "elixir_cart_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty.png"),
+    "elixir_cart_not_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_not_empty.png"),
+    "elixir_cart_empty_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty_battle.png"),
+    "elixir_cart_full_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_full_battle.png"),
+
     # Button Images
-    "collect_full": f"{image_dir}buttons/collect_full.png",
-    "collect_empty": f"{image_dir}buttons/collect_empty.png",
-    "close_elixir": f"{image_dir}buttons/close_elixir.png",
-    "battle_open": f"{image_dir}buttons/attack.png",
-    "battle_start": f"{image_dir}buttons/find_now.png",
-    "end_battle": f"{image_dir}buttons/end_battle.png",
-    "return_home": f"{image_dir}buttons/return_home.png",
-    "surrender": f"{image_dir}buttons/surrender.png",
-    "confirm_surrender": f"{image_dir}/buttons/confirm_surrender.png",
+    "collect_full": resource_path(f"{image_dir}buttons/collect_full.png"),
+    "collect_empty": resource_path(f"{image_dir}buttons/collect_empty.png"),
+    "close_elixir": resource_path(f"{image_dir}buttons/close_elixir.png"),
+    "battle_open": resource_path(f"{image_dir}buttons/attack.png"),
+    "battle_start": resource_path(f"{image_dir}buttons/find_now.png"),
+    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
+    "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
+    "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
+    "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
 
     # Other Images
-    "start_app": f"{image_dir}start_app.png",
-    "battle_verify": f"{image_dir}battle_verify.png",
-    "attack_cooldown": f"{image_dir}attack_cooldown.png",
-    "second_village": f"{image_dir}second_battle.png",
-    "troop_deployed": f"{image_dir}troop_deployed.png",
+    "start_app": resource_path(f"{image_dir}start_app.png"),
+    "second_battle": resource_path(f"{image_dir}second_battle.png"),
+    "troop_deployed": resource_path(f"{image_dir}troop_deployed.png"),
+    "attack_cooldown": resource_path(f"{image_dir}attack_cooldown.png"),
+    "battle_verify": resource_path(f"{image_dir}battle_verify.png"),
 
-    # Places to deploy troops
-    "warplace": [os.path.normpath(os.path.join(image_dir, "warplace", img)) for img in os.listdir(os.path.join(image_dir, "warplace")) if img.endswith(".png")]
+    # Warplace Images (example for 0-24, add more if needed)
+    **{f"warplace_{i}": resource_path(f"{image_dir}warplace/{i}.png") for i in range(25)},
 }
 
 
@@ -91,67 +117,70 @@ def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=
 
 def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
     try:
-        # Load the template image
-        template = cv2.imread(image_path)
-        if template is None:
-            print(f"Could not load image: {image_path}")
-            return False
-            
-        # Capture screen region
-        monitor = {"top": region[1], "left": region[0], "width": region[2]-region[0], "height": region[3]-region[1]} if region else {"top": 0, "left": 0, "width": screen_width, "height": screen_height}
-        screenshot = np.array(sct.grab(monitor))
-        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
-        
-        # Multi-scale template matching
-        best_val = 0
-        best_loc = None
-        best_scale = 1.0
-        
-        # Try different scales to account for different resolutions
-        for scale in [1.0]:
-            # Resize the template according to the scale
-            width = int(template.shape[1] * scale)
-            height = int(template.shape[0] * scale)
-            if width <= 0 or height <= 0 or width >= screenshot.shape[1] or height >= screenshot.shape[0]:
-                continue
+        # Create a thread-local instance of mss for thread safety
+        with mss() as thread_sct:
+            # Load the template image
+            template = cv2.imread(resource_path(f"{image_dir}attack_cooldown.png"))
+            if template is None:
+                print(f"Could not load image: {image_path}")
+                return False
                 
-            resized_template = cv2.resize(template, (width, height))
+            # Capture screen region
+            monitor = {"top": region[1], "left": region[0], "width": region[2]-region[0], "height": region[3]-region[1]} if region else {"top": 0, "left": 0, "width": screen_width, "height": screen_height}
+            screenshot = np.array(thread_sct.grab(monitor))
+            screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
             
-            # Match template
-            result = cv2.matchTemplate(screenshot, resized_template, cv2.TM_CCOEFF_NORMED)
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+            # Multi-scale template matching
+            best_val = 0
+            best_loc = None
+            best_scale = 1.0
             
-            # Keep track of the best match
-            if max_val > best_val:
-                best_val = max_val
-                best_loc = max_loc
-                best_scale = scale
-        
-        # If the best match exceeds our confidence threshold
-        if best_val >= confidence:
-            # Calculate center position based on the best match
-            h, w = int(template.shape[0] * best_scale), int(template.shape[1] * best_scale)
-            center_x = best_loc[0] + w//2 + (region[0] if region else 0)
-            center_y = best_loc[1] + h//2 + (region[1] if region else 0)
+            # Try different scales to account for different resolutions
+            for scale in [1.0]:
+                # Resize the template according to the scale
+                width = int(template.shape[1] * scale)
+                height = int(template.shape[0] * scale)
+                
+                if width <= 0 or height <= 0 or width >= screenshot.shape[1] or height >= screenshot.shape[0]:
+                    continue
+                    
+                resized_template = cv2.resize(template, (width, height))
+                
+                # Match template
+                result = cv2.matchTemplate(screenshot, resized_template, cv2.TM_CCOEFF_NORMED)
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                
+                # Keep track of the best match
+                if max_val > best_val:
+                    best_val = max_val
+                    best_loc = max_loc
+                    best_scale = scale
             
-            # Click the center of the image if parsemode is False
-            if not parsemode:
-                pyautogui.click(center_x, center_y)
-                print(f"Success clicking image {image_path} (scale: {best_scale:.2f}, confidence: {best_val:.2f})")
-                return True
-            # Return the coordinates of the image if parsemode is True without clicking it
+            # If the best match exceeds our confidence threshold
+            if best_val >= confidence:
+                # Calculate center position based on the best match
+                h, w = int(template.shape[0] * best_scale), int(template.shape[1] * best_scale)
+                center_x = best_loc[0] + w//2 + (region[0] if region else 0)
+                center_y = best_loc[1] + h//2 + (region[1] if region else 0)
+                
+                # Click the center of the image if parsemode is False
+                if not parsemode:
+                    pyautogui.click(center_x, center_y)
+                    print(f"Success clicking image {image_path} (scale: {best_scale:.2f}, confidence: {best_val:.2f})")
+                    return True
+                # Return the coordinates of the image if parsemode is True without clicking it
+                else:
+                    return (center_x, center_y)
+            
+            # If no good match found
             else:
-                return (center_x, center_y)
-        
-        # If no good match found
-        else:
-            current_time = time.time()
-            last_time = error_last_print_time.get(image_path, 0)
-            if current_time - last_time > ERROR_COOLDOWN:
-                print(f"Image {image_path} not found. Best match: {best_val:.2f}")
-                error_last_print_time[image_path] = current_time
-            return False
-            
+                current_time = time.time()
+                last_time = error_last_print_time.get(image_path, 0)
+                if current_time - last_time > ERROR_COOLDOWN:
+                    print(f"Image {image_path} not found. Best match: {best_val:.2f}")
+                    error_last_print_time[image_path] = current_time
+                return False
+                
     except Exception as e:
         print(f"Error locating image {image_path}: {e}")
         return False
@@ -256,73 +285,236 @@ def cast_hero_ability():
         last_ability_time = current_time
 
 
-def main():
-    # global for elixir_check_counter to keep track of the number of times we check for elixir
-    global elixir_check_counter, elixir_check_frequency
+def keyboard_listener():
+    """Function that runs in a separate thread to monitor keyboard events"""
+    keyboard.wait('p')  # Wait for the 'p' key to be pressed
+    print("P key pressed, stopping bot...")
+    stop_bot()
 
-    while True:
-        # Check if the game is open in the builder base by looking for the attack button
-        if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True, confidence=0.7):
-            time.sleep(0.3)
-        # Check for elixir every N times
-        
-        elixir_check_counter += 1
-        if elixir_check_counter >= elixir_check_frequency:
-            elixir_check_counter = 0
-            print("Checking for elixir this iteration")
-            check_elixir()
-       
 
-        # Press the attack button to open the battle menu
-        click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
-        time.sleep(0.3)
-        # Check if attack is available. If not, wait for 2 seconds and try again
-        # This is to avoid clicking the attack button when it is on cooldown
-        while click_image(IMAGE_PATHS["attack_cooldown"], loop=False, confidence=0.7):
-            print("Attack cooldown detected. Waiting for 2 seconds...")
-            time.sleep(2)
-        # If no cooldown, start the battle
-        click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
-        # Wait for troops menu to appear before deploying troops
-        while True:
-            if click_image(IMAGE_PATHS["battle_verify"], region=regions["bottom_half"], loop=False, parsemode=True, confidence=0.7):
-                # Found battle_verify, we can proceed
-                break
-    
+# Flag to control the bot running state
+running = False
+# Global thread reference
+bot_thread = None
 
-        # Deploy troops at the first village
-        find_warplace_and_deploy_troops()
-
-        # Wait for the first battle to finish. This is done by looking for new troops to appear in the menu
-        # If the troops are not found, we assume the battle is still going on in the first village
-        battle_finished = False # Flag to indicate if we are in the first village battle
-        while not click_image(IMAGE_PATHS["second_village"], loop=False, confidence=0.7, parsemode=True):
-            print("First village battle is not finished yet.")
+def farming_bot():
+    global elixir_check_counter, elixir_check_frequency, running
+    while running:
+        try:
+            # Check if the game is open in the builder base by looking for the attack button
+            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True, confidence=0.7):
+                time.sleep(0.3)
+            # Check for elixir every N times
             
-            # Check for return home button
-            if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
-                battle_finished = True
-                print("First village battle didn't advance to the second village. Returning home.")
-                break
-            cast_hero_ability()
+            elixir_check_counter += 1
+            if elixir_check_counter >= elixir_check_frequency:
+                elixir_check_counter = 0
+                print("Checking for elixir this iteration")
+                check_elixir()
+           
+            # Press the attack button to open the battle menu
+            click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
+            time.sleep(0.3)
+            # Check if attack is available. If not, wait for 2 seconds and try again
+            # This is to avoid clicking the attack button when it is on cooldown
+            while running and click_image(IMAGE_PATHS["attack_cooldown"], loop=False, confidence=0.7):
+                print("Attack cooldown detected. Waiting for 2 seconds...")
+                time.sleep(2)
+                if not running:
+                    return
+            # If no cooldown, start the battle
+            click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
-        # Battle is still going on
-        if battle_finished == False:
-            # The battle advanced to the second village, as the return home button is not found but new troops are found
-            # Deploy troops at the second village
-            print("Battle advanced to the second village.")
+            # Wait for troops menu to appear before deploying troops
+            while running:
+                if click_image(IMAGE_PATHS["battle_verify"], region=regions["bottom_half"], loop=False, parsemode=True, confidence=0.7):
+                    # Found battle_verify, we can proceed
+                    break
+                if not running:
+                    return
+            
+            # Deploy troops at the first village
             find_warplace_and_deploy_troops()
 
-            # Wait for the second battle to finish. This is done by looking for the return home button
-            # If the return home button is not found, we assume the battle is still going on in the second village
-            while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
-                print("Second village battle not finished yet.")               
+            # Wait for the first battle to finish. This is done by looking for new troops to appear in the menu
+            # If the troops are not found, we assume the battle is still going on in the first village
+            battle_finished = False # Flag to indicate if we are in the first village battle
+            while running and not click_image(IMAGE_PATHS["second_village"], loop=False, confidence=0.7, parsemode=True):
+                print("First village battle is not finished yet.")
+                
+                # Check for return home button
+                if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
+                    battle_finished = True
+                    print("First village battle didn't advance to the second village. Returning home.")
+                    break
                 cast_hero_ability()
+                if not running:
+                    return
 
-            # Try to click the return home button once more just to be sure (lol)
-            click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
+            # Battle is still going on
+            if battle_finished == False and running:
+                # The battle advanced to the second village, as the return home button is not found but new troops are found
+                # Deploy troops at the second village
+                print("Battle advanced to the second village.")
+                find_warplace_and_deploy_troops()
 
-# After so many years, i still DON'T KNOW why this is needed, but it is
-if __name__ == "__main__":
-    main()
+                # Wait for the second battle to finish. This is done by looking for the return home button
+                # If the return home button is not found, we assume the battle is still going on in the second village
+                while running and not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
+                    print("Second village battle not finished yet.")               
+                    cast_hero_ability()
+                    if not running:
+                        return
+                # Try to click the return home button once more just to be sure (lol)
+                click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
+        except Exception as e:
+            print(f"Error in farming bot: {e}")
+            if not running:
+                return
+            # Wait a bit before trying again to avoid spamming errors
+            time.sleep(2)
+
+def start_bot():
+    global running, bot_thread, elixir_check_frequency, keyboard_thread
+    
+    # Update elixir check frequency from UI
+    try:
+        elixir_check_frequency = int(elixir_freq_entry.get())
+        if elixir_check_frequency <= 0:
+            messagebox.showerror("Error", "Elixir check frequency must be greater than 0")
+            return
+    except ValueError:
+        messagebox.showerror("Error", "Elixir check frequency must be a number")
+        return
+    
+    if not running:
+        running = True
+        start_button.config(text="Stop Bot", bg="#ff6b6b")
+        status_label.config(text="Status: Running", foreground="green")
+        log_text.insert(tk.END, "Bot started...\n")
+        log_text.insert(tk.END, f"Elixir check frequency set to every {elixir_check_frequency} battles\n")
+        log_text.insert(tk.END, "Press 'P' key to stop the bot at any time\n")
+        log_text.see(tk.END)
+        
+        # Create and start the bot thread
+        bot_thread = threading.Thread(target=farming_bot)
+        bot_thread.daemon = True
+        bot_thread.start()
+        
+        # Start keyboard listener thread
+        keyboard_thread = threading.Thread(target=keyboard_listener)
+        keyboard_thread.daemon = True
+        keyboard_thread.start()
+    else:
+        stop_bot()
+
+def stop_bot():
+    global running, bot_thread
+    if running:
+        running = False
+        # Update UI safely from any thread
+        root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50"))
+        root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
+        root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
+        root.after(0, lambda: log_text.see(tk.END))
+        
+        # Wait for the bot thread to terminate
+        if bot_thread and bot_thread.is_alive():
+            bot_thread.join(timeout=1.0)
+
+def on_closing():
+    stop_bot()
+    root.destroy()
+
+# Create the main UI window
+root = tk.Tk()
+root.title("CoC Builder Base Farming Bot")
+root.geometry("600x500")
+root.protocol("WM_DELETE_WINDOW", on_closing)
+
+# Configure the grid
+root.grid_columnconfigure(0, weight=1)
+root.grid_rowconfigure(3, weight=1)
+
+# Create a header frame
+header_frame = ttk.Frame(root, padding="10")
+header_frame.grid(row=0, column=0, sticky="ew")
+
+# Add a title
+title_label = ttk.Label(header_frame, text="Clash of Clans Builder Base Farming Bot", font=("Helvetica", 16, "bold"))
+title_label.pack(pady=10)
+
+# Create a settings frame
+settings_frame = ttk.LabelFrame(root, text="Settings", padding="10")
+settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+
+# Add elixir frequency setting
+elixir_freq_label = ttk.Label(settings_frame, text="Check Elixir Every N Battles:")
+elixir_freq_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
+
+elixir_freq_entry = ttk.Entry(settings_frame, width=5)
+elixir_freq_entry.grid(row=0, column=1, sticky="w", padx=5, pady=5)
+elixir_freq_entry.insert(0, str(elixir_check_frequency))
+
+# Resolution info
+resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
+resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
+
+# Create a control frame
+control_frame = ttk.Frame(root, padding="10")
+control_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+
+# Add start button with custom style
+start_button = tk.Button(
+    control_frame, 
+    text="Start Bot", 
+    font=("Helvetica", 12, "bold"),
+    bg="#4CAF50", 
+    fg="white",
+    activebackground="#45a049",
+    activeforeground="white",
+    width=15,
+    height=2,
+    command=start_bot
+)
+start_button.pack(side="left", padx=10)
+
+# Add status label
+status_label = ttk.Label(control_frame, text="Status: Not Running", font=("Helvetica", 10), foreground="red")
+status_label.pack(side="left", padx=20)
+
+# Create a log frame
+log_frame = ttk.LabelFrame(root, text="Bot Log", padding="10")
+log_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
+
+# Create a scrollable text widget for logs
+log_text = tk.Text(log_frame, height=10, width=70, wrap=tk.WORD)
+log_text.pack(side="left", fill="both", expand=True)
+
+# Add a scrollbar to the log text
+log_scroll = ttk.Scrollbar(log_frame, command=log_text.yview)
+log_scroll.pack(side="right", fill="y")
+log_text.config(yscrollcommand=log_scroll.set)
+
+# Add some initial log messages
+log_text.insert(tk.END, "Bot initialized and ready to start...\n")
+log_text.insert(tk.END, "Please make sure Clash of Clans is running in fullscreen mode\n")
+log_text.insert(tk.END, "and you are in the Builder Base before starting the bot.\n\n")
+log_text.insert(tk.END, "⚠️ DISCLAIMER: Using automation tools may violate Supercell's Terms of Service.\n")
+log_text.insert(tk.END, "This tool is for educational purposes only. Use at your own risk.\n")
+log_text.see(tk.END)
+
+# Add a footer with instructions
+footer_frame = ttk.Frame(root, padding="10")
+footer_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
+
+instructions_label = ttk.Label(
+    footer_frame, 
+    text="Instructions: Start the bot, then switch back to Clash of Clans within 3 seconds.",
+    font=("Helvetica", 9, "italic")
+)
+instructions_label.pack()
+
+# Start the UI main loop
+root.mainloop()
