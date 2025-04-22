@@ -17,7 +17,7 @@ screen_width, screen_height = pyautogui.size()
 
 
 elixir_check_counter = 0 # Counter for elixir check so we don't after every battle so we can save time
-first_village = True # Flag to indicate if we are in the first village battle
+
 
 
 error_last_print_time = {} # Track last error message time for each image
@@ -44,22 +44,22 @@ regions = {
 # Paths to image assets
 IMAGE_PATHS = {
     # Elixir Cart Images
-    "elixir_cart_really_full": f"{image_dir}/elixir_cart/elixir_cart_really_full.png",
-    "elixir_cart_full": f"{image_dir}/elixir_cart/elixir_cart_full.png",
-    "elixir_cart_empty": f"{image_dir}/elixir_cart/elixir_cart_empty.png",
-    "elixir_cart_empty_battle": f"{image_dir}/elixir_cart/elixir_cart_empty_battle.png",
-    "elixir_cart_full_battle": f"{image_dir}/elixir_cart/elixir_cart_full_battle.png",
-    "elixir_cart_not_empty": f"{image_dir}/elixir_cart/elixir_cart_not_empty.png",
+    "elixir_cart_really_full": f"{image_dir}elixir_cart/elixir_cart_really_full.png",
+    "elixir_cart_full": f"{image_dir}elixir_cart/elixir_cart_full.png",
+    "elixir_cart_empty": f"{image_dir}elixir_cart/elixir_cart_empty.png",
+    "elixir_cart_empty_battle": f"{image_dir}elixir_cart/elixir_cart_empty_battle.png",
+    "elixir_cart_full_battle": f"{image_dir}elixir_cart/elixir_cart_full_battle.png",
+    "elixir_cart_not_empty": f"{image_dir}elixir_cart/elixir_cart_not_empty.png",
     
     # Button Images
-    "collect_full": f"{image_dir}/buttons/collect_full.png",
-    "collect_empty": f"{image_dir}/buttons/collect_empty.png",
-    "close_elixir": f"{image_dir}/buttons/close_elixir.png",
-    "battle_open": f"{image_dir}/buttons/attack.png",
-    "battle_start": f"{image_dir}/buttons/find_now.png",
-    "end_battle": f"{image_dir}/buttons/end_battle.png",
-    "return_home": f"{image_dir}/buttons/return_home.png",
-    "surrender": f"{image_dir}/buttons/surrender.png",
+    "collect_full": f"{image_dir}buttons/collect_full.png",
+    "collect_empty": f"{image_dir}buttons/collect_empty.png",
+    "close_elixir": f"{image_dir}buttons/close_elixir.png",
+    "battle_open": f"{image_dir}buttons/attack.png",
+    "battle_start": f"{image_dir}buttons/find_now.png",
+    "end_battle": f"{image_dir}buttons/end_battle.png",
+    "return_home": f"{image_dir}buttons/return_home.png",
+    "surrender": f"{image_dir}buttons/surrender.png",
     "confirm_surrender": f"{image_dir}/buttons/confirm_surrender.png",
 
     # Other Images
@@ -70,7 +70,7 @@ IMAGE_PATHS = {
     "troop_deployed": f"{image_dir}troop_deployed.png",
 
     # Places to deploy troops
-    "warplace": [os.path.join(image_dir, "warplace", img) for img in os.listdir(os.path.join(image_dir, "warplace")) if img.endswith(".png")]
+    "warplace": [os.path.normpath(os.path.join(image_dir, "warplace", img)) for img in os.listdir(os.path.join(image_dir, "warplace")) if img.endswith(".png")]
 }
 
 
@@ -180,35 +180,38 @@ def check_elixir():
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops():
+    found_warplace = False # Flag to indicate if the warplace was found
+
     # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.8, loop=False)
-
-        if warplace_location:  
+        
+        if warplace_location:
             deploy_troops(warplace_location, delay=0.1)
-            print(f"Success of deploying troops!")
+            print(f"Success deploying troops at {path}!")
+            found_warplace = True
             return  # Exit after success
         
-        # If the warplace image is not found, try to deploy troops by clicking random places
-        # This is a fallback method to ensure troops are deployed even if the warplace image is not found
-        else:
-            print(f"Could not deploy troops. Trying fallback method.")
-            for _ in range(35):  # Try clicking N random places. Usually 10 is enough
-                # Click random places in the top half of the screen (to avoild the troops menu)
-                random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
-                random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
-                # Try to deploy a troop by clicking the random place
-                pydirectinput.press("1")
-                time.sleep(0.1)
-                pyautogui.click(random_x, random_y)
-                time.sleep(0.5)
+    # If the warplace image is not found, try to deploy troops by clicking random places
+    # This is a fallback method to ensure troops are deployed even if the warplace image is not found
+    if not found_warplace:
+        print(f"Could not deploy troops. Trying fallback method.")
+        for _ in range(35):  # Try clicking N random places. Usually 10 is enough
+            # Click random places in the top half of the screen (to avoild the troops menu)
+            random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
+            random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
+            # Try to deploy a troop by clicking the random place
+            pydirectinput.press("1")
+            time.sleep(0.1)
+            pyautogui.click(random_x, random_y)
+            time.sleep(0.5)
 
-                # Check if the troop was deployed successfully
-                if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_left"], loop=False, confidence=0.8):
-                    print("Troop deployed successfully using fallback method!")
-                    # If successful, deploy other troops and the hero at the discovered location
-                    deploy_troops((random_x, random_y), delay=0.1)
-                    return  # Exit after success
+            # Check if the troop was deployed successfully
+            if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_left"], loop=False, confidence=0.8):
+                print("Troop deployed successfully using fallback method!")
+                # If successful, deploy other troops and the hero at the discovered location
+                deploy_troops((random_x, random_y), delay=0.1)
+                return  # Exit after success
 
 
 
@@ -269,29 +272,33 @@ def main():
             # Wait for the first battle to finish. This is done by looking for new troops to appear in the menu
             # If the troops are not found, we assume the battle is still going on in the first village
             while not click_image(IMAGE_PATHS["second_village"], loop=False, confidence=0.8):
+                battle_finished = False # Flag to indicate if we are in the first village battle
                 print("First village battle is not finished yet.")
-                # Perodically cast the hero ability to help the troops
+                # Perodically cast the hero ability to help the troops1
                 time.sleep(5)
                 pydirectinput.press("q")
                 # If return home button appeared before the new troops - it means the battle is over and didn't advance to the second village
                 if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8):
+                    battle_finished = True
                     print("First village battle didn't advance to the second village. Returning home.")
                     break
 
-            # The battle advanced to the second village, as the return home button is not found but new troops are found
-            # Deplouy troops at the second village
-            find_warplace_and_deploy_troops()
-            print("Battle advanced to the second village.")
+            # Battle is still going on
+            if battle_finished == False:
+                # The battle advanced to the second village, as the return home button is not found but new troops are found
+                # Deplouy troops at the second village
+                find_warplace_and_deploy_troops()
+                print("Battle advanced to the second village.")
 
-            # Wait for the second battle to finish. This is done by looking for the return home button
-            # If the return home button is not found, we assume the battle is still going on in the second village
-            while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8):
-                print("Second village battle not finished yet.")
-                time.sleep(5)
-                pydirectinput.press("q")
+                # Wait for the second battle to finish. This is done by looking for the return home button
+                # If the return home button is not found, we assume the battle is still going on in the second village
+                while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8):
+                    print("Second village battle not finished yet.")
+                    time.sleep(5)
+                    pydirectinput.press("q")
 
-                # Try to click the return home button once more just to be sure (lol)
-                click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8)
+                    # Try to click the return home button once more just to be sure (lol)
+                    click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.8)
 
 # After so many years, i still DON'T KNOW why this is needed, but it is
 if __name__ == "__main__":
