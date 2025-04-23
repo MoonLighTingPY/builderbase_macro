@@ -26,7 +26,7 @@
 ## 🛠️ Installation
 
 ### Option 1: Prebuilt Version ✅
-1. Download the latest release from [GitHub Releases](https://github.com/MoonLighTingPY/builderbase_macro/releases)
+1. Download the latest release from [Releases](https://github.com/MoonLighTingPY/builderbase_macro/releases)
 2. Extract the archive
 3. Run `main.exe`
 
