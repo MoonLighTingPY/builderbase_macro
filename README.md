@@ -48,14 +48,14 @@ Run the compiled `main.exe` from the `dist/` folder.
 
 ---
 
-## ▶️ Usage Guide
+## ▶️ Usage Guide:
 
 1. Start `main.exe`
 2. Set how many battles to wait before collecting elixir (default: 2)
-3. Open Clash of Clans
-4. Navigate to the Builder Base
-5. Press `O` to start the bot
-6. Press `P` to pause (wait for a few second before interacting for bot to finish current operations)
+3. Press `Start Bot`  in the UI
+4. Open Clash of Clans
+5. Navigate to the Builder Base
+7. Press `P` to pause (wait for a few second before interacting for bot to finish current operations)
 
 ---
 

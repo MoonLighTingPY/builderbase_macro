@@ -10,6 +10,8 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 import keyboard
+import signal
+import atexit
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -19,6 +21,9 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+
+keyboard_thread = None
+stop_event = threading.Event()
 
 # Initialize mss for screen capture
 sct = mss()
@@ -30,7 +35,7 @@ pydirectinput.PAUSE = 0
 screen_width, screen_height = pyautogui.size()
 
 error_last_print_time = {} # Track last error message time for each image
-ERROR_COOLDOWN = 5  # Time in seconds before printing the same error message again
+ERROR_COOLDOWN = 1  # Time in seconds before printing the same error message again
 
 elixir_check_counter = 0 # Counter for elixir check so we don't сheck elixir after every battle so we can save time
 elixir_check_frequency = 2 # Check elixir every N battles
@@ -96,11 +101,11 @@ IMAGE_PATHS = {
 # loop, boolean, defines whether to keep trying to find the image until it is found or no
 def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True):
     if loop:
-        while True:
-            if click_image_core(image_path, region, confidence, parsemode):
+        while not stop_event.is_set():
+            if click_image_core(image_path, region, confidence, parsemode) and not stop_event.is_set():
                 return True
-    else:
-        return click_image_core(image_path, region, confidence, parsemode)   
+    elif not stop_event.is_set():
+        return click_image_core(image_path, region, confidence, parsemode)
         
 
 def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
@@ -181,12 +186,16 @@ def deploy_troops(location, delay):
     time.sleep(delay)
     # Deploy troops using keys 1-8 for troops and Q for Hero. 
     for key in ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]:
+        if stop_event.is_set():
+            return
         time.sleep(delay)
         pydirectinput.press(key)
         time.sleep(delay)
         pyautogui.click()
     # Cast the ability of the hero and troops
     for key in ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]:
+        if stop_event.is_set():
+            return
         time.sleep(delay)
         pydirectinput.press(key)
 
@@ -245,9 +254,11 @@ def find_warplace_and_deploy_troops():
         
     # If the warplace image is not found, try to deploy troops by clicking random places
     # This is a fallback method to ensure troops are deployed even if the warplace image is not found
-    if not found_warplace:
+    if not found_warplace and not stop_event.is_set():
         print(f"Could not deploy troops. Trying fallback method.")
-        for _ in range(35):  # Try clicking N random places. Usually 10 is enough
+        for _ in range(15):  # Try clicking N random places. Usually 10 is enough
+            if stop_event.is_set():
+                return
             # Click random places in the top half of the screen (to avoild the troops menu)
             random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
             random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
@@ -255,7 +266,7 @@ def find_warplace_and_deploy_troops():
             pydirectinput.press("1")
             time.sleep(0.1)
             pyautogui.click(random_x, random_y)
-            time.sleep(0.5)
+            time.sleep(0.35)
 
             # Check if the troop was deployed successfully
             if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_left"], loop=False, confidence=0.7):
@@ -277,8 +288,27 @@ def keyboard_listener():
     """Function that runs in a separate thread to monitor keyboard events"""
     keyboard.wait('p')  # Wait for the 'p' key to be pressed
     print("P key pressed, stopping bot...")
-    stop_bot()
+    stop_event.set()  # Signal all threads to stop
+    
+    # Call stop_bot using root.after to ensure it's called from the main thread
+    if 'root' in globals():
+        root.after(0, stop_bot)
+    else:
+        stop_bot()
 
+def safe_exit():
+    """Function to ensure clean exit"""
+    print("Performing safe exit...")
+    global running
+    running = False
+    stop_event.set()
+    
+    # If this is called from Python exit, make sure threads are cleaned up
+    if bot_thread and bot_thread.is_alive():
+        try:
+            bot_thread.join(timeout=1.0)
+        except:
+            pass
 
 
 # Flag to control the bot running state
@@ -286,9 +316,13 @@ running = False
 # Global thread reference
 bot_thread = None
 
+atexit.register(safe_exit)
+signal.signal(signal.SIGINT, lambda sig, frame: safe_exit())
+signal.signal(signal.SIGTERM, lambda sig, frame: safe_exit())
+
 def farming_bot():
     global elixir_check_counter, elixir_check_frequency, running
-    while running:
+    while running and not stop_event.is_set():
         try:
             # Check if the game is open in the builder base by looking for the attack button
             if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True, confidence=0.7):
@@ -364,7 +398,8 @@ def farming_bot():
             time.sleep(2)
 
 def start_bot():
-    global running, bot_thread, elixir_check_frequency, keyboard_thread
+    global running, bot_thread, elixir_check_frequency, keyboard_thread, stop_event, elixir_check_counter
+    elixir_check_counter = 0  # Reset the elixir check counter when starting the bot
     
     # Update elixir check frequency from UI
     try:
@@ -377,6 +412,9 @@ def start_bot():
         return
     
     if not running:
+        # Reset the stop_event - critical for restarting
+        stop_event.clear()
+        
         running = True
         start_button.config(text="Stop Bot", bg="#ff6b6b")
         status_label.config(text="Status: Running", foreground="green")
@@ -390,7 +428,7 @@ def start_bot():
         bot_thread.daemon = True
         bot_thread.start()
         
-        # Start keyboard listener thread
+        # Start keyboard listener in a separate thread
         keyboard_thread = threading.Thread(target=keyboard_listener)
         keyboard_thread.daemon = True
         keyboard_thread.start()
@@ -398,18 +436,43 @@ def start_bot():
         stop_bot()
 
 def stop_bot():
-    global running, bot_thread
+    global running, bot_thread, keyboard_thread
+    
     if running:
+        print("Stopping bot...")
         running = False
-        # Update UI safely from any thread
-        root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50"))
-        root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
-        root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
-        root.after(0, lambda: log_text.see(tk.END))
+        stop_event.set()  # Signal all threads to stop
         
-        # Wait for the bot thread to terminate
+        # Update UI safely
+        if 'root' in globals():
+            root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50"))
+            root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
+            root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
+            root.after(0, lambda: log_text.see(tk.END))
+        
+        # Try to forcefully terminate operations that might be stuck
+        try:
+            # Press Escape key a few times to try to exit any in-game menus
+            for _ in range(3):
+                pydirectinput.press('escape')
+                time.sleep(0.1)
+        except Exception as e:
+            print(f"Error sending escape keys: {e}")
+            
+        print("Stop event set, waiting for threads to terminate...")
+        
+        # Give threads a chance to terminate gracefully
         if bot_thread and bot_thread.is_alive():
-            bot_thread.join(timeout=1.0)
+            try:
+                bot_thread.join(timeout=2.0)
+                if bot_thread.is_alive():
+                    print("Warning: Bot thread is still running after timeout")
+            except Exception as e:
+                print(f"Error joining bot thread: {e}")
+                
+        # Clear thread references after stopping
+        bot_thread = None
+        keyboard_thread = None
 
 def on_closing():
     stop_bot()
