@@ -77,6 +77,7 @@ IMAGE_PATHS = {
     "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
     "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
     "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
+    "okay_starbonus": resource_path(f"{image_dir}buttons/okay_starbonus.png"),
 
     # Other Images
     "start_app": resource_path(f"{image_dir}start_app.png"),
@@ -99,16 +100,38 @@ IMAGE_PATHS = {
 # confidence, float, between 0 and 1 that defines the confidence level for the image matching
 # parsemode, boolean, defines whether to return the coordinates of the image instead of clicking it
 # loop, boolean, defines whether to keep trying to find the image until it is found or no
-def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True):
+def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True, scales=[1.0]):
     if loop:
-        while not stop_event.is_set():
-            if click_image_core(image_path, region, confidence, parsemode) and not stop_event.is_set():
-                return True
+        if image_path == IMAGE_PATHS["battle_start"]:
+            # When looking for battle_start button, add a timeout to check for star bonus popup
+            start_time = time.time()
+            while not stop_event.is_set():
+                # First try to find the battle start button
+                if click_image_core(image_path, region, confidence, parsemode, scales) and not stop_event.is_set():
+                    return True
+                
+                # If we've been searching for a while, check for star bonus popup
+                if time.time() - start_time > 2:
+                    print("Battle start button not found, checking for star bonus popup...")
+                    # Try to find and click okay_starbonus with different scales
+
+                    if click_image_core(IMAGE_PATHS["okay_starbonus"], None, 0.7, False, [0.75, 1.0, 1.25]) and not stop_event.is_set():
+                        print(f"Star bonus popup detected and dismissed")
+                        time.sleep(0.3)
+                        return "restart"  # Return "restart" to indicate we need to restart the battle sequence
+                    
+                    # If no star bonus found after checking, reset timer and continue looking for battle_start
+                    start_time = time.time()
+        else:
+            # Normal behavior for other images
+            while not stop_event.is_set():
+                if click_image_core(image_path, region, confidence, parsemode, scales) and not stop_event.is_set():
+                    return True
     elif not stop_event.is_set():
-        return click_image_core(image_path, region, confidence, parsemode)
+        return click_image_core(image_path, region, confidence, parsemode, scales)
         
 
-def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
+def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0]):
     try:
         # Create a thread-local instance of mss for thread safety
         with mss() as thread_sct:
@@ -129,7 +152,7 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False):
             best_scale = 1.0
             
             # Try different scales to account for different resolutions
-            for scale in [1.0]:
+            for scale in scales:
                 # Resize the template according to the scale
                 width = int(template.shape[1] * scale)
                 height = int(template.shape[0] * scale)
@@ -324,10 +347,11 @@ def farming_bot():
     global elixir_check_counter, elixir_check_frequency, running
     while running and not stop_event.is_set():
         try:
+
             # Check if the game is open in the builder base by looking for the attack button
-            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], parsemode=True, confidence=0.7):
-                time.sleep(0.3)
-            # Check for elixir every N times
+            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
+                print("Game is open in the builder base, starting bot...")
+                       
             
             elixir_check_counter += 1
             if elixir_check_counter >= elixir_check_frequency:
@@ -338,15 +362,12 @@ def farming_bot():
             # Press the attack button to open the battle menu
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
-            # Check if attack is available. If not, wait for 2 seconds and try again
-            # This is to avoid clicking the attack button when it is on cooldown
-            while running and click_image(IMAGE_PATHS["attack_cooldown"], loop=False, confidence=0.7):
-                print("Attack cooldown detected. Waiting for 2 seconds...")
-                time.sleep(2)
-                if not running:
-                    return
-            # If no cooldown, start the battle
-            click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
+
+            # Check if we need to restart the battle sequence if we found a star bonus popup
+            result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
+            if result == "restart":
+                print("Star bonus popup handled, restarting battle sequence")
+                continue  # Restart the loop from the beginning
 
             # Wait for troops menu to appear before deploying troops
             while running:
