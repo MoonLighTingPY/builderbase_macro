@@ -1,4 +1,4 @@
-# 💥 Clash of Clans: Builder Base Resources Farming Script
+# 💥 Clash of Clans: Builder Base Resources Farming Bot
 
 > Fully automated resource farming using **Night Witches** in Builder Base  
 > ⚠️ *Works only with English UI and Night Witches in the army camp. *
