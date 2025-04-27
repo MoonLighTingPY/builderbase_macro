@@ -207,20 +207,17 @@ def deploy_troops(location, delay):
     pyautogui.moveTo(location)
     pyautogui.click(location)
     time.sleep(delay)
-    # Deploy troops using keys 1-8 for troops and Q for Hero. 
-    for key in ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]:
-        if stop_event.is_set():
-            return
-        time.sleep(delay)
-        pydirectinput.press(key)
-        time.sleep(delay)
-        pyautogui.click()
-    # Cast the ability of the hero and troops
-    for key in ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]:
-        if stop_event.is_set():
-            return
-        time.sleep(delay)
-        pydirectinput.press(key)
+    
+    # Deploy troops and cast abilities using keys 1-8 and Q
+    troop_keys = ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]
+    for _ in range(2):  # Loop twice: first for deployment, second for abilities
+        for key in troop_keys:
+            if stop_event.is_set():
+                return
+            time.sleep(delay)
+            pydirectinput.press(key)
+            if _ == 0:  # Only click during the first loop (deployment phase)
+                pyautogui.click()
 
 # Function to check the elixir cart and collect elixir if available
 # This function will check the elixir cart for different states (full, empty, not empty) and collect elixir if available
@@ -247,15 +244,14 @@ def check_elixir():
             time.sleep(0.05)
     time.sleep(1)
     
-    # Try each image pair up to 2 times
-    for _ in range(2):
-        for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
-            if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
-                time.sleep(0.3)
-                click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"])
-                time.sleep(0.3)
-                click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
-                return True  # Success
+    # Try to find and click the elixir cart and collect it
+    for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
+        if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
+            time.sleep(0.3)
+            click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"])
+            time.sleep(0.3)
+            click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
+            return True  # Success
                 
     return False  # Indicate that a restart is needed
 
