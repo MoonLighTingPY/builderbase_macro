@@ -14,7 +14,7 @@ import signal
 import atexit
 
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    # Get absolute path to resource, works for dev and for PyInstaller
     try:
         base_path = sys._MEIPASS
     except AttributeError:
@@ -302,9 +302,8 @@ def cast_hero_ability():
         pydirectinput.press("q")
         last_ability_time = current_time
 
-
+# Function that runs in a separate thread to monitor pause bot key press 
 def keyboard_listener():
-    """Function that runs in a separate thread to monitor keyboard events"""
     keyboard.wait('p')  # Wait for the 'p' key to be pressed
     print("P key pressed, stopping bot...")
     stop_event.set()  # Signal all threads to stop
@@ -315,8 +314,8 @@ def keyboard_listener():
     else:
         stop_bot()
 
+# Function to handle safe exit
 def safe_exit():
-    """Function to ensure clean exit"""
     print("Performing safe exit...")
     global running
     running = False
