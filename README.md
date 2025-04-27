@@ -1,7 +1,7 @@
 # 💥 Clash of Clans: Builder Base Resources Farming Bot
 
 > Fully automated resource farming using **Night Witches** in Builder Base  
-> ⚠️ *Works only with English UI and Night Witches in the army camp. *
+> ⚠️ *Works only with English UI and 8 Night Witches in the army camp. *
 
 
 ## 🚀 Features
@@ -18,9 +18,6 @@
 2. Make sure the game is in **Fullscreen mode**
 3. Ensure your army camp has **8 Night Witches**
 
-> 🔥 **DO NOT SKIP THESE STEPS!**  
-> The script uses English UI elements and relies on Night Witches for detection.
-
 ---
 
 ## 🛠️ Installation
@@ -29,7 +26,13 @@
 1. Download the latest release from [Releases](https://github.com/MoonLighTingPY/builderbase_macro/releases)
 2. Extract the archive
 3. Run `main.exe`
-
+   
+> ## ⚠️ Antivirus Warning
+> Your antivirus might flag this application as malicious. This is a **false positive** caused by:
+> - The packaging method (PyInstaller)
+> - Automation features that control mouse/keyboard
+>
+> If you're concerned, you can build from source using the instructions below:
 ### Option 2: Build from Source 🏗️
 
 Clone the repository and install dependencies:
