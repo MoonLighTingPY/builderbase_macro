@@ -68,7 +68,7 @@ Run the compiled `main.exe` from the `dist/` folder.
 - Automation tools may **violate Supercell's Terms of Service!**
 - This script is for **educational purposes only**
 - Use at your own risk
-rewrite so it looks better, and not so over-stimulated. canvas mode
+
 
 
 
