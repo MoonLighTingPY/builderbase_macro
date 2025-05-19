@@ -12,6 +12,9 @@ from tkinter import ttk, messagebox
 import keyboard
 import signal
 import atexit
+import updater
+
+APP_VERSION = "1.0"
 
 def resource_path(relative_path):
     # Get absolute path to resource, works for dev and for PyInstaller
@@ -416,7 +419,7 @@ def farming_bot():
 def start_bot():
     global running, bot_thread, elixir_check_frequency, keyboard_thread, stop_event, elixir_check_counter
     elixir_check_counter = 0  # Reset the elixir check counter when starting the bot
-    
+
     # Update elixir check frequency from UI
     try:
         elixir_check_frequency = int(elixir_freq_entry.get())
@@ -516,6 +519,15 @@ title_label.pack(pady=10)
 settings_frame = ttk.LabelFrame(root, text="Settings", padding="10")
 settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
+auto_update_var = tk.BooleanVar(value=True)  # Default to enabled
+auto_update_check = ttk.Checkbutton(
+    settings_frame, 
+    text="Check for updates on startup", 
+    variable=auto_update_var
+)
+auto_update_check.grid(row=0, column=3, sticky="e", padx=5, pady=5)
+
+
 # Add elixir frequency setting
 elixir_freq_label = ttk.Label(settings_frame, text="Check Elixir Every N Battles:")
 elixir_freq_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
@@ -555,6 +567,8 @@ status_label.pack(side="left", padx=20)
 log_frame = ttk.LabelFrame(root, text="Bot Log", padding="10")
 log_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
 
+
+
 # Create a scrollable text widget for logs
 log_text = tk.Text(log_frame, height=10, width=70, wrap=tk.WORD)
 log_text.pack(side="left", fill="both", expand=True)
@@ -563,6 +577,8 @@ log_text.pack(side="left", fill="both", expand=True)
 log_scroll = ttk.Scrollbar(log_frame, command=log_text.yview)
 log_scroll.pack(side="right", fill="y")
 log_text.config(yscrollcommand=log_scroll.set)
+
+
 
 # Add some initial log messages
 log_text.insert(tk.END, "Bot initialized and ready to start...\n")
@@ -576,12 +592,19 @@ log_text.see(tk.END)
 footer_frame = ttk.Frame(root, padding="10")
 footer_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
 
-instructions_label = ttk.Label(
-    footer_frame, 
-    text="Instructions: Start the bot, then switch back to Clash of Clans within 3 seconds.",
-    font=("Helvetica", 9, "italic")
+
+version_label = ttk.Label(footer_frame, text=f"Version: {APP_VERSION}")
+version_label.pack(side="left", padx=10)
+
+# Add manual check for updates button
+update_button = ttk.Button(
+    footer_frame,
+    text="Check for Updates",
+    command=lambda: updater.check_and_prompt_update(root, show_latest_message=True)
 )
-instructions_label.pack()
+update_button.pack(side="right", padx=10)
+
+
 
 # Start the UI main loop
 root.mainloop()
