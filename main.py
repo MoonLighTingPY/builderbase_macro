@@ -44,6 +44,7 @@ last_ability_time = 0  # Track when we last used the hero ability
 # Bot timing settings
 troop_deploy_delay = 0.1  # Delay between troop deployment actions
 ability_cooldown = 5.0    # Seconds between hero ability casts
+warplace_attempts = 3  # Number of attempts to find the warplace before giving up
 
 # Determine if we should use high resolution images
 use_2k_images = screen_width > 1920 or screen_height > 1080
@@ -268,7 +269,7 @@ def find_warplace_and_deploy_troops():
 
     # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
-        if count >= 4:  # Exit if we've already deployed 3 times
+        if count >= warplace_attempts:  # Exit if we've already deployed 3 times
             print(f"Successfully deployed troops at {count} locations")
             return
             
@@ -430,7 +431,7 @@ def farming_bot():
             time.sleep(2)
 
 def start_bot():
-    global running, bot_thread, elixir_check_frequency, keyboard_thread, stop_event, elixir_check_counter
+    global running, bot_thread, elixir_check_frequency, keyboard_thread, stop_event, elixir_check_counter, ability_cooldown, warplace_attempts
     elixir_check_counter = 0  # Reset the elixir check counter when starting the bot
     
     # Update elixir check frequency from UI
@@ -445,10 +446,21 @@ def start_bot():
 
     # Update delays and cooldown from UI
     try:
+        ability_cooldown = float(ability_cd_entry.get())
         if troop_deploy_delay < 0 or ability_cooldown < 0:
             raise ValueError
     except ValueError:
         messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
+        return
+    
+    # Update warplace attempts from UI
+    try:
+        warplace_attempts = int(warplace_entry.get())
+        if warplace_attempts <= 0:
+            messagebox.showerror("Error", "Warplace deployment attempts must be greater than 0")
+            return
+    except ValueError:
+        messagebox.showerror("Error", "Warplace deployment attempts must be a number")
         return
     
     if not running:
@@ -540,7 +552,7 @@ title_label.pack(pady=10)
 settings_frame = ttk.LabelFrame(root, text="Settings", padding="10")
 settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
 
-# Add elixir frequency setting
+# Add elixir frequency setting (row 0)
 elixir_freq_label = ttk.Label(settings_frame, text="Check Elixir Every N Battles:")
 elixir_freq_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
 
@@ -552,6 +564,28 @@ elixir_freq_entry.insert(0, str(elixir_check_frequency))
 resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
 resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
 
+# Add warplace attempts setting (row 1)
+warplace_label = ttk.Label(settings_frame, text="Warplace Deployment Attempts:")
+warplace_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+warplace_entry = ttk.Entry(settings_frame, width=5)
+warplace_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+warplace_entry.insert(0, str(warplace_attempts))
+
+# Add warplace description
+warplace_help = ttk.Label(
+    settings_frame, 
+    text="(Number of times to try deploying troops at different warplaces)", 
+    font=("Helvetica", 8), 
+    foreground="grey"
+)
+warplace_help.grid(row=1, column=2, sticky="w", padx=5, pady=5)
+
+# Add hero ability cooldown setting (row 3)
+ability_cd_label = ttk.Label(settings_frame, text="Hero Ability Cooldown (s):")
+ability_cd_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
+ability_cd_entry = ttk.Entry(settings_frame, width=5)
+ability_cd_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
+ability_cd_entry.insert(0, str(ability_cooldown))
 
 # Create a control frame
 control_frame = ttk.Frame(root, padding="10")
@@ -588,6 +622,7 @@ log_text.pack(side="left", fill="both", expand=True)
 log_scroll = ttk.Scrollbar(log_frame, command=log_text.yview)
 log_scroll.pack(side="right", fill="y")
 log_text.config(yscrollcommand=log_scroll.set)
+
 
 # Add some initial log messages
 log_text.insert(tk.END, "Bot initialized and ready to start...\n")
