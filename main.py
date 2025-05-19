@@ -264,18 +264,27 @@ def check_elixir():
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops():
     found_warplace = False # Flag to indicate if the warplace was found
+    count = 0 # Counter for the number of attempts to find the warplace
 
     # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
+        if count >= 4:  # Exit if we've already deployed 3 times
+            print(f"Successfully deployed troops at {count} locations")
+            return
+            
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
             deploy_troops(warplace_location, delay=troop_deploy_delay)
-            if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_half"], loop=False, confidence=0.7):
-                print(f"Troop deployed successfully at {warplace_location}!")
-                print(f"Success deploying troops at {path}!")
-                found_warplace = True
-                return  # Exit after success
+            print(f"Troop deployed successfully at {warplace_location}!")
+            print(f"Success deploying troops at {path}!")
+            found_warplace = True
+            count += 1  # Increment count after successful deployment
+            
+    # If we get here, we either deployed at multiple locations or couldn't find enough warplaces
+    if count > 0:
+        print(f"Deployed troops at {count} locations")
+        return
         
 
     # If the warplace image is not found, try to deploy troops by clicking random places
