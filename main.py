@@ -41,6 +41,11 @@ elixir_check_counter = 0 # Counter for elixir check so we don't сheck elixir af
 elixir_check_frequency = 2 # Check elixir every N battles
 last_ability_time = 0  # Track when we last used the hero ability
 
+# Bot timing settings
+troop_deploy_delay = 0.1  # Delay between troop deployment actions
+click_delay = 0.3         # Delay after click actions
+ability_cooldown = 5.0    # Seconds between hero ability casts
+
 # Determine if we should use high resolution images
 use_2k_images = screen_width > 1920 or screen_height > 1080
 image_dir = "2k/" if use_2k_images else "fullhd/"
@@ -266,11 +271,14 @@ def find_warplace_and_deploy_troops():
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
-            deploy_troops(warplace_location, delay=0.1)
-            print(f"Success deploying troops at {path}!")
-            found_warplace = True
-            return  # Exit after success
+            deploy_troops(warplace_location, delay=troop_deploy_delay)
+            if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_half"], loop=False, confidence=0.7):
+                print(f"Troop deployed successfully at {warplace_location}!")
+                print(f"Success deploying troops at {path}!")
+                found_warplace = True
+                return  # Exit after success
         
+
     # If the warplace image is not found, try to deploy troops by clicking random places
     # This is a fallback method to ensure troops are deployed even if the warplace image is not found
     if not found_warplace and not stop_event.is_set():
@@ -288,17 +296,17 @@ def find_warplace_and_deploy_troops():
             time.sleep(0.35)
 
             # Check if the troop was deployed successfully
-            if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_left"], loop=False, confidence=0.7):
+            if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_half"], loop=False, confidence=0.7):
                 print("Troop deployed successfully using fallback method!")
                 # If successful, deploy other troops and the hero at the discovered location
-                deploy_troops((random_x, random_y), delay=0.1)
+                deploy_troops((random_x, random_y), delay=troop_deploy_delay)
                 return  # Exit after success
 
 def cast_hero_ability():
     # Periodically cast the hero ability to help the troops
     global last_ability_time
     current_time = time.time()
-    if current_time - last_ability_time >= 5:
+    if current_time - last_ability_time >= ability_cooldown:
         pydirectinput.press("q")
         last_ability_time = current_time
 
@@ -345,8 +353,7 @@ def farming_bot():
 
             # Check if the game is open in the builder base by looking for the attack button
             if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
-                print("Game is open in the builder base, starting bot...")
-                       
+                print("Game is open in the builder base, starting bot...")                       
             
             elixir_check_counter += 1
             if elixir_check_counter >= elixir_check_frequency:
@@ -356,7 +363,7 @@ def farming_bot():
            
             # Press the attack button to open the battle menu
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
-            time.sleep(0.3)
+            time.sleep(click_delay)
 
             # Check if we need to restart the battle sequence if we found a star bonus popup
             result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
@@ -395,6 +402,7 @@ def farming_bot():
                 # The battle advanced to the second village, as the return home button is not found but new troops are found
                 # Deploy troops at the second village
                 print("Battle advanced to the second village.")
+                time.sleep(0.5)
                 find_warplace_and_deploy_troops()
 
                 # Wait for the second battle to finish. This is done by looking for the return home button
@@ -425,6 +433,17 @@ def start_bot():
             return
     except ValueError:
         messagebox.showerror("Error", "Elixir check frequency must be a number")
+        return
+
+    # Update delays and cooldown from UI
+    try:
+        troop_deploy_delay = float(troop_delay_entry.get())
+        click_delay = float(click_delay_entry.get())
+        ability_cooldown = float(ability_cd_entry.get())
+        if troop_deploy_delay < 0 or click_delay < 0 or ability_cooldown < 0:
+            raise ValueError
+    except ValueError:
+        messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
         return
     
     if not running:
@@ -527,6 +546,27 @@ elixir_freq_entry.insert(0, str(elixir_check_frequency))
 # Resolution info
 resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
 resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
+
+# Add troop deploy delay setting
+troop_delay_label = ttk.Label(settings_frame, text="Troop Deploy Delay (s):")
+troop_delay_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+troop_delay_entry = ttk.Entry(settings_frame, width=5)
+troop_delay_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+troop_delay_entry.insert(0, str(troop_deploy_delay))
+
+# Add click delay setting
+click_delay_label = ttk.Label(settings_frame, text="Click Delay (s):")
+click_delay_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
+click_delay_entry = ttk.Entry(settings_frame, width=5)
+click_delay_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
+click_delay_entry.insert(0, str(click_delay))
+
+# Add hero ability cooldown setting
+ability_cd_label = ttk.Label(settings_frame, text="Ability Cooldown (s):")
+ability_cd_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
+ability_cd_entry = ttk.Entry(settings_frame, width=5)
+ability_cd_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
+ability_cd_entry.insert(0, str(ability_cooldown))
 
 # Create a control frame
 control_frame = ttk.Frame(root, padding="10")
