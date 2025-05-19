@@ -43,7 +43,6 @@ last_ability_time = 0  # Track when we last used the hero ability
 
 # Bot timing settings
 troop_deploy_delay = 0.1  # Delay between troop deployment actions
-click_delay = 0.3         # Delay after click actions
 ability_cooldown = 5.0    # Seconds between hero ability casts
 
 # Determine if we should use high resolution images
@@ -136,7 +135,7 @@ def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=
         return click_image_core(image_path, region, confidence, parsemode, scales)
         
 
-def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0]):
+def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0, 2.0, 1.75, 1.5, 1.25, 0.75, 0.5]): 
     try:
         # Create a thread-local instance of mss for thread safety
         with mss() as thread_sct:
@@ -363,7 +362,7 @@ def farming_bot():
            
             # Press the attack button to open the battle menu
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
-            time.sleep(click_delay)
+            time.sleep(0.3)
 
             # Check if we need to restart the battle sequence if we found a star bonus popup
             result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
@@ -437,10 +436,7 @@ def start_bot():
 
     # Update delays and cooldown from UI
     try:
-        troop_deploy_delay = float(troop_delay_entry.get())
-        click_delay = float(click_delay_entry.get())
-        ability_cooldown = float(ability_cd_entry.get())
-        if troop_deploy_delay < 0 or click_delay < 0 or ability_cooldown < 0:
+        if troop_deploy_delay < 0 or ability_cooldown < 0:
             raise ValueError
     except ValueError:
         messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
@@ -547,26 +543,6 @@ elixir_freq_entry.insert(0, str(elixir_check_frequency))
 resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
 resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
 
-# Add troop deploy delay setting
-troop_delay_label = ttk.Label(settings_frame, text="Troop Deploy Delay (s):")
-troop_delay_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-troop_delay_entry = ttk.Entry(settings_frame, width=5)
-troop_delay_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
-troop_delay_entry.insert(0, str(troop_deploy_delay))
-
-# Add click delay setting
-click_delay_label = ttk.Label(settings_frame, text="Click Delay (s):")
-click_delay_label.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-click_delay_entry = ttk.Entry(settings_frame, width=5)
-click_delay_entry.grid(row=2, column=1, sticky="w", padx=5, pady=5)
-click_delay_entry.insert(0, str(click_delay))
-
-# Add hero ability cooldown setting
-ability_cd_label = ttk.Label(settings_frame, text="Ability Cooldown (s):")
-ability_cd_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
-ability_cd_entry = ttk.Entry(settings_frame, width=5)
-ability_cd_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
-ability_cd_entry.insert(0, str(ability_cooldown))
 
 # Create a control frame
 control_frame = ttk.Frame(root, padding="10")
