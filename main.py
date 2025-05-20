@@ -565,7 +565,7 @@ resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_w
 resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
 
 # Add warplace attempts setting (row 1)
-warplace_label = ttk.Label(settings_frame, text="Warplace Deployment Attempts:")
+warplace_label = ttk.Label(settings_frame, text="Troops Deployment Attempts:")
 warplace_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
 warplace_entry = ttk.Entry(settings_frame, width=5)
 warplace_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
@@ -574,7 +574,7 @@ warplace_entry.insert(0, str(warplace_attempts))
 # Add warplace description
 warplace_help = ttk.Label(
     settings_frame, 
-    text="(Number of times to try deploying troops at different warplaces)", 
+    text="(Number of times to try deploying troops at different locations)", 
     font=("Helvetica", 8), 
     foreground="grey"
 )
