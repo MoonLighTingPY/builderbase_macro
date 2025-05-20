@@ -43,8 +43,8 @@ last_ability_time = 0  # Track when we last used the hero ability
 
 # Bot timing settings
 troop_deploy_delay = 0.1  # Delay between troop deployment actions
-ability_cooldown = 5.0    # Seconds between hero ability casts
-warplace_attempts = 3  # Number of attempts to find the warplace before giving up
+ability_cooldown = 2.5   # Seconds between hero ability casts
+warplace_attempts = 8  # Number of attempts to find the warplace before giving up
 
 # Determine if we should use high resolution images
 use_2k_images = screen_width > 1920 or screen_height > 1080
