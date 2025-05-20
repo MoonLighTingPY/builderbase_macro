@@ -16,7 +16,8 @@
 
 1. Set Clash of Clans language to: **English**
 2. Make sure the game is in **Fullscreen mode**
-3. Ensure your army camp has **8 Night Witches**
+3. Choose a classic scenery **(Forest)**
+4. Ensure your army camp has **8 Night Witches**
 
 ---
 
