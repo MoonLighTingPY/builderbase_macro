@@ -65,12 +65,14 @@ regions = {
 # Paths to image assets
 IMAGE_PATHS = {
     # Elixir Cart Images
-    "elixir_cart_really_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_really_full.png"),
-    "elixir_cart_full": resource_path(f"{image_dir}elixir_cart/elixir_cart_full.png"),
-    "elixir_cart_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty.png"),
-    "elixir_cart_empty_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_empty_battle.png"),
-    "elixir_cart_full_battle": resource_path(f"{image_dir}elixir_cart/elixir_cart_full_battle.png"),
-    "elixir_cart_not_empty": resource_path(f"{image_dir}elixir_cart/elixir_cart_not_empty.png"),
+    "elixir_cart_0": resource_path(f"{image_dir}elixir_cart/elixir_cart_0.png"),
+    "elixir_cart_1": resource_path(f"{image_dir}elixir_cart/elixir_cart_1.png"),
+    "elixir_cart_2": resource_path(f"{image_dir}elixir_cart/elixir_cart_2.png"),
+    "elixir_cart_3": resource_path(f"{image_dir}elixir_cart/elixir_cart_3.png"),
+    "elixir_cart_4": resource_path(f"{image_dir}elixir_cart/elixir_cart_4.png"),
+    "elixir_cart_5": resource_path(f"{image_dir}elixir_cart/elixir_cart_5.png"),
+    "elixir_cart_6": resource_path(f"{image_dir}elixir_cart/elixir_cart_6.png"),
+    "elixir_cart_7": resource_path(f"{image_dir}elixir_cart/elixir_cart_7.png"),
     
     # Button Images
     "collect_full": resource_path(f"{image_dir}buttons/collect_full.png"),
@@ -81,6 +83,7 @@ IMAGE_PATHS = {
     "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
     "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
     "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
+    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
     "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
     "okay_starbonus": resource_path(f"{image_dir}buttons/okay_starbonus.png"),
 
@@ -88,8 +91,8 @@ IMAGE_PATHS = {
     "start_app": resource_path(f"{image_dir}start_app.png"),
     "battle_verify": resource_path(f"{image_dir}battle_verify.png"),
     "attack_cooldown": resource_path(f"{image_dir}attack_cooldown.png"),
-    "second_village": resource_path(f"{image_dir}second_battle.png"),
-    "troop_deployed": resource_path(f"{image_dir}troop_deployed.png"),
+    "ends_in": resource_path(f"{image_dir}ends_in.png"),
+
 
     # Places to deploy troops
     "warplace": [resource_path(os.path.join(image_dir, "warplace", img)) for img in os.listdir(resource_path(os.path.join(image_dir, "warplace"))) if img.endswith(".png")]
@@ -191,6 +194,7 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
                     return True
                 # Return the coordinates of the image if parsemode is True without clicking it
                 else:
+                    print(f"Found image {image_path} at ({center_x}, {center_y}) with scale {best_scale:.2f} and confidence {best_val:.2f}")
                     return (center_x, center_y)
             
             # If no good match found
@@ -229,10 +233,14 @@ def deploy_troops(location, delay):
 def check_elixir():
     # Define image pairs (cart image, collect button, cart confidence, button confidence)
     image_pairs = [
-        ("elixir_cart_full", "collect_full", 0.55, 0.6),
-        ("elixir_cart_really_full", "collect_empty", 0.55, 0.55),
-        ("elixir_cart_empty", "collect_empty", 0.55, 0.6),
-        ("elixir_cart_not_empty", "collect_empty", 0.55, 0.6)
+        ("elixir_cart_0", "collect_full", 0.55, 0.7),
+        ("elixir_cart_1", "collect_full", 0.55, 0.7),
+        ("elixir_cart_2", "collect_full", 0.55, 0.7),
+        ("elixir_cart_3", "collect_full", 0.55, 0.7),
+        ("elixir_cart_4", "collect_full", 0.55, 0.7),
+        ("elixir_cart_5", "collect_full", 0.55, 0.7),
+        ("elixir_cart_6", "collect_empty", 0.55, 0.7),
+        ("elixir_cart_7", "collect_empty", 0.55, 0.7)
     ]
 
     # Scroll so the elixir cart is visible in case it is not
@@ -248,6 +256,7 @@ def check_elixir():
             pyautogui.scroll(-25000)
             time.sleep(0.05)
     time.sleep(1)
+
     
     # Try to find and click the elixir cart and collect it
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
@@ -265,30 +274,24 @@ def check_elixir():
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops():
     found_warplace = False # Flag to indicate if the warplace was found
-    count = 0 # Counter for the number of attempts to find the warplace
+
 
     # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
-        if count >= warplace_attempts:  # Exit if we've already deployed 3 times
-            print(f"Successfully deployed troops at {count} locations")
-            return
-            
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
             deploy_troops(warplace_location, delay=troop_deploy_delay)
-            print(f"Troop deployed successfully at {warplace_location}!")
-            print(f"Success deploying troops at {path}!")
-            found_warplace = True
-            count += 1  # Increment count after successful deployment
-            
-    # If we get here, we either deployed at multiple locations or couldn't find enough warplaces
-    if count > 0:
-        print(f"Deployed troops at {count} locations")
-        return
-        
+            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.7, parsemode=True):
+                # If the troop was deployed successfully, we can exit the loop
+                print(f"Troop deployed successfully at {warplace_location}!")
+                found_warplace = True
+                return  
+            else:
+                print(f"Failed to deploy troops at {warplace_location}. Retrying with next warplace image.")
+     
 
-    # If the warplace image is not found, try to deploy troops by clicking random places
+    # If any warplace image is found, try to deploy troops by clicking random places
     # This is a fallback method to ensure troops are deployed even if the warplace image is not found
     if not found_warplace and not stop_event.is_set():
         print(f"Could not deploy troops. Trying fallback method.")
@@ -305,11 +308,18 @@ def find_warplace_and_deploy_troops():
             time.sleep(0.35)
 
             # Check if the troop was deployed successfully
-            if click_image(IMAGE_PATHS["troop_deployed"], region=regions["bottom_half"], loop=False, confidence=0.7):
+            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.7, parsemode=True):
                 print("Troop deployed successfully using fallback method!")
                 # If successful, deploy other troops and the hero at the discovered location
                 deploy_troops((random_x, random_y), delay=troop_deploy_delay)
                 return  # Exit after success
+    # If we reach here, it means we couldn't deploy troops at any location
+    print("Failed to deploy troops at any location. Ending battle.")
+    # In case this is the second village and we failed to deploy troops, we are able to end the battle.
+    if click_image(IMAGE_PATHS["end_battle"], region=regions["bottom_right"], loop=False, confidence=0.7):
+        time.sleep(0.3)
+        click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7)
+        print("Battle ended due to failed troop deployment.")
 
 def cast_hero_ability():
     # Periodically cast the hero ability to help the troops
@@ -369,6 +379,7 @@ def farming_bot():
                 elixir_check_counter = 0
                 print("Checking for elixir this iteration")
                 check_elixir()
+
            
             # Press the attack button to open the battle menu
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
@@ -382,7 +393,8 @@ def farming_bot():
 
             # Wait for troops menu to appear before deploying troops
             while running:
-                if click_image(IMAGE_PATHS["battle_verify"], region=regions["bottom_half"], loop=False, parsemode=True, confidence=0.7):
+                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.7):
+                    print("Battle verify found, troops menu is ready.")
                     # Found battle_verify, we can proceed
                     break
                 if not running:
@@ -391,10 +403,10 @@ def farming_bot():
             # Deploy troops at the first village
             find_warplace_and_deploy_troops()
 
-            # Wait for the first battle to finish. This is done by looking for new troops to appear in the menu
-            # If the troops are not found, we assume the battle is still going on in the first village
+            # Wait for the first battle to finish. This is done by looking for "battle ends in:" text (battle_verify image)
+            # If the text is not found, we assume the battle is still going on
             battle_finished = False # Flag to indicate if we are in the first village battle
-            while running and not click_image(IMAGE_PATHS["second_village"], loop=False, confidence=0.7, parsemode=True):
+            while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.7, parsemode=True):
                 print("First village battle is not finished yet.")
                 
                 # Check for return home button
@@ -408,10 +420,11 @@ def farming_bot():
 
             # Battle is still going on
             if battle_finished == False and running:
+
                 # The battle advanced to the second village, as the return home button is not found but new troops are found
                 # Deploy troops at the second village
                 print("Battle advanced to the second village.")
-                time.sleep(0.5)
+                time.sleep(1)  # Wait a bit to ensure the second village is "loaded"
                 find_warplace_and_deploy_troops()
 
                 # Wait for the second battle to finish. This is done by looking for the return home button
@@ -453,15 +466,6 @@ def start_bot():
         messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
         return
     
-    # Update warplace attempts from UI
-    try:
-        warplace_attempts = int(warplace_entry.get())
-        if warplace_attempts <= 0:
-            messagebox.showerror("Error", "Warplace deployment attempts must be greater than 0")
-            return
-    except ValueError:
-        messagebox.showerror("Error", "Warplace deployment attempts must be a number")
-        return
     
     if not running:
         # Reset the stop_event - critical for restarting
@@ -564,21 +568,6 @@ elixir_freq_entry.insert(0, str(elixir_check_frequency))
 resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
 resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
 
-# Add warplace attempts setting (row 1)
-warplace_label = ttk.Label(settings_frame, text="Troops Deployment Attempts:")
-warplace_label.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-warplace_entry = ttk.Entry(settings_frame, width=5)
-warplace_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
-warplace_entry.insert(0, str(warplace_attempts))
-
-# Add warplace description
-warplace_help = ttk.Label(
-    settings_frame, 
-    text="(Number of times to try deploying troops at different locations)", 
-    font=("Helvetica", 8), 
-    foreground="grey"
-)
-warplace_help.grid(row=1, column=2, sticky="w", padx=5, pady=5)
 
 # Add hero ability cooldown setting (row 3)
 ability_cd_label = ttk.Label(settings_frame, text="Hero Ability Cooldown (s):")
