@@ -46,6 +46,8 @@ troop_deploy_delay = 0.1  # Delay between troop deployment actions
 ability_cooldown = 2.5   # Seconds between hero ability casts
 warplace_attempts = 8  # Number of attempts to find the warplace before giving up
 
+trophy_dumping_mode = False  # Set to True if you want to dump trophies instead of farming
+
 # Determine if we should use high resolution images
 use_2k_images = screen_width > 1920 or screen_height > 1080
 image_dir = "2k/" if use_2k_images else "fullhd/"
@@ -70,7 +72,6 @@ IMAGE_PATHS = {
     "elixir_cart_2": resource_path(f"{image_dir}elixir_cart/elixir_cart_2.png"),
     "elixir_cart_3": resource_path(f"{image_dir}elixir_cart/elixir_cart_3.png"),
     "elixir_cart_4": resource_path(f"{image_dir}elixir_cart/elixir_cart_4.png"),
-    "elixir_cart_5": resource_path(f"{image_dir}elixir_cart/elixir_cart_5.png"),
     "elixir_cart_6": resource_path(f"{image_dir}elixir_cart/elixir_cart_6.png"),
     "elixir_cart_7": resource_path(f"{image_dir}elixir_cart/elixir_cart_7.png"),
     
@@ -212,21 +213,27 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
 
 # Function to deploy troops at a specific location
 # This function will move the mouse to the location and click it, then deploy troops using the keys 1-8
-def deploy_troops(location, delay):
+def deploy_troops(location, delay, one_troop_only=False):
     pyautogui.moveTo(location)
     pyautogui.click(location)
     time.sleep(delay)
     
-    # Deploy troops and cast abilities using keys 1-8 and Q
-    troop_keys = ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]
-    for _ in range(2):  # Loop twice: first for deployment, second for abilities
-        for key in troop_keys:
-            if stop_event.is_set():
-                return
-            time.sleep(delay)
-            pydirectinput.press(key)
-            if _ == 0:  # Only click during the first loop (deployment phase)
-                pyautogui.click()
+    if not one_troop_only:
+        # Deploy troops and cast abilities using keys 1-8 and Q
+        troop_keys = ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]
+        for _ in range(2):  # Loop twice: first for deployment, second for abilities
+            for key in troop_keys:
+                if stop_event.is_set():
+                    return
+                time.sleep(delay)
+                pydirectinput.press(key)
+                if _ == 0:  # Only click during the first loop (deployment phase)
+                    pyautogui.click()
+    else:
+        # Deploy only one troop (the first one)
+        pydirectinput.press("1")
+        time.sleep(delay)
+        pyautogui.click()
 
 # Function to check the elixir cart and collect elixir if available
 # This function will check the elixir cart for different states (full, empty, not empty) and collect elixir if available
@@ -238,7 +245,6 @@ def check_elixir():
         ("elixir_cart_2", "collect_full", 0.55, 0.7),
         ("elixir_cart_3", "collect_full", 0.55, 0.7),
         ("elixir_cart_4", "collect_full", 0.55, 0.7),
-        ("elixir_cart_5", "collect_full", 0.55, 0.7),
         ("elixir_cart_6", "collect_empty", 0.55, 0.7),
         ("elixir_cart_7", "collect_empty", 0.55, 0.7)
     ]
@@ -272,7 +278,7 @@ def check_elixir():
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
-def find_warplace_and_deploy_troops():
+def find_warplace_and_deploy_troops(one_troop_only=False):
     found_warplace = False # Flag to indicate if the warplace was found
 
 
@@ -281,7 +287,7 @@ def find_warplace_and_deploy_troops():
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
-            deploy_troops(warplace_location, delay=troop_deploy_delay)
+            deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=one_troop_only)
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 # If the troop was deployed successfully, we can exit the loop
                 print(f"Troop deployed successfully at {warplace_location}!")
@@ -311,7 +317,7 @@ def find_warplace_and_deploy_troops():
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("Troop deployed successfully using fallback method!")
                 # If successful, deploy other troops and the hero at the discovered location
-                deploy_troops((random_x, random_y), delay=troop_deploy_delay)
+                deploy_troops((random_x, random_y), delay=troop_deploy_delay, one_troop_only=one_troop_only)
                 return  # Exit after success
     # If we reach here, it means we couldn't deploy troops at any location
     print("Failed to deploy troops at any location. Ending battle.")
@@ -366,88 +372,142 @@ signal.signal(signal.SIGINT, lambda sig, frame: safe_exit())
 signal.signal(signal.SIGTERM, lambda sig, frame: safe_exit())
 
 def farming_bot():
-    global elixir_check_counter, elixir_check_frequency, running
+    global elixir_check_counter, elixir_check_frequency, running, trophy_dumping_mode
     while running and not stop_event.is_set():
-        try:
+        if not trophy_dumping_mode:
+            try:
 
-            # Check if the game is open in the builder base by looking for the attack button
-            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
-                print("Game is open in the builder base, starting bot...")                       
-            
-            elixir_check_counter += 1
-            if elixir_check_counter >= elixir_check_frequency:
-                elixir_check_counter = 0
-                print("Checking for elixir this iteration")
-            check_elixir()
-
-
-           
-            # Press the attack button to open the battle menu
-            click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
-            time.sleep(0.3)
-
-            # Check if we need to restart the battle sequence if we found a star bonus popup
-            result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
-            if result == "restart":
-                print("Star bonus popup handled, restarting battle sequence")
-                continue  # Restart the loop from the beginning
-
-            # Wait for troops menu to appear before deploying troops
-            while running:
-                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
-                    print("Battle verify found, troops menu is ready.")
-                    # Found battle_verify, we can proceed
-                    break
-                if not running:
-                    return
-            
-            print("Deploying troops for the first village...")
-            # Deploy troops at the first village
-            find_warplace_and_deploy_troops()
-
-            # Wait for the first battle to finish. This is done by looking for "battle ends in:" text (battle_verify image)
-            # If the text is not found, we assume the battle is still going on
-            battle_finished = False # Flag to indicate if we are in the first village battle
-            while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
-                print("First village battle is not finished yet.")
+                # Check if the game is open in the builder base by looking for the attack button
+                if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
+                    print("Game is open in the builder base, starting bot...")                       
                 
-                # Check for return home button
-                if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
-                    battle_finished = True
-                    print("First village battle didn't advance to the second village. Returning home.")
-                    break
-                cast_hero_ability()
-                if not running:
-                    return
+                elixir_check_counter += 1
+                if elixir_check_counter >= elixir_check_frequency:
+                    elixir_check_counter = 0
+                    print("Checking for elixir this iteration")
+                    check_elixir()
 
-            # Battle is still going on
-            if battle_finished == False and running:
 
-                # The battle advanced to the second village, as the return home button is not found but new troops are found
-                # Deploy troops at the second village
-                print("Battle advanced to the second village.")
-                time.sleep(1)  # Wait a bit to ensure the second village is "loaded"
-                print("Deploying troops for the second village...")
+            
+                # Press the attack button to open the battle menu
+                click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
+                time.sleep(0.3)
+
+                # Check if we need to restart the battle sequence if we found a star bonus popup
+                result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
+                if result == "restart":
+                    print("Star bonus popup handled, restarting battle sequence")
+                    continue  # Restart the loop from the beginning
+
+                # Wait for troops menu to appear before deploying troops
+                while running:
+                    if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
+                        print("Battle verify found, troops menu is ready.")
+                        # Found battle_verify, we can proceed
+                        break
+                    if not running:
+                        return
+                
+                print("Deploying troops for the first village...")
+                # Deploy troops at the first village
                 find_warplace_and_deploy_troops()
 
-                # Wait for the second battle to finish. This is done by looking for the return home button
-                # If the return home button is not found, we assume the battle is still going on in the second village
-                while running and not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
-                    print("Second village battle not finished yet.")               
+                # Wait for the first battle to finish. This is done by looking for "battle ends in:" text (battle_verify image)
+                # If the text is not found, we assume the battle is still going on
+                battle_finished = False # Flag to indicate if we are in the first village battle
+                while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
+                    print("First village battle is not finished yet.")
+                    
+                    # Check for return home button
+                    if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
+                        battle_finished = True
+                        print("First village battle didn't advance to the second village. Returning home.")
+                        break
                     cast_hero_ability()
                     if not running:
                         return
-                # Try to click the return home button once more just to be sure (lol)
-                click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
-        except Exception as e:
-            print(f"Error in farming bot: {e}")
-            if not running:
-                return
-            # Wait a bit before trying again to avoid spamming errors
-            time.sleep(2)
+
+                # Battle is still going on
+                if battle_finished == False and running:
+
+                    # The battle advanced to the second village, as the return home button is not found but new troops are found
+                    # Deploy troops at the second village
+                    print("Battle advanced to the second village.")
+                    time.sleep(1)  # Wait a bit to ensure the second village is "loaded"
+                    print("Deploying troops for the second village...")
+                    find_warplace_and_deploy_troops()
+
+                    # Wait for the second battle to finish. This is done by looking for the return home button
+                    # If the return home button is not found, we assume the battle is still going on in the second village
+                    while running and not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
+                        print("Second village battle not finished yet.")               
+                        cast_hero_ability()
+                        if not running:
+                            return
+                    # Try to click the return home button once more just to be sure (lol)
+                    click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
+            except Exception as e:
+                print(f"Error in farming bot: {e}")
+                if not running:
+                    return
+                # Wait a bit before trying again to avoid spamming errors
+                time.sleep(2)
+        elif trophy_dumping_mode:
+            try:
+
+                # Check if the game is open in the builder base by looking for the attack button
+                if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
+                    print("Game is open in the builder base, starting bot...")                       
+                
+                elixir_check_counter += 1
+                if elixir_check_counter >= elixir_check_frequency:
+                    elixir_check_counter = 0
+                    print("Checking for elixir this iteration")
+                check_elixir()
+
+
+            
+                # Press the attack button to open the battle menu
+                click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
+                time.sleep(0.3)
+
+                # Check if we need to restart the battle sequence if we found a star bonus popup
+                result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
+                if result == "restart":
+                    print("Star bonus popup handled, restarting battle sequence")
+                    continue  # Restart the loop from the beginning
+
+                # Wait for troops menu to appear before deploying troops
+                while running:
+                    if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
+                        print("Battle verify found, troops menu is ready.")
+                        # Found battle_verify, we can proceed
+                        break
+                    if not running:
+                        return
+                
+                print("Deploying troops for the first village...")
+                # Deploy one troop at the first village
+                find_warplace_and_deploy_troops(one_troop_only=True)
+
+                if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8):
+                    print("Surrendering the first village battle to dump trophies.")
+                    time.sleep(0.3)
+                    click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7)
+                    time.sleep(0.3)
+                    click_image(IMAGE_PATHS["return_home"], loop=True, confidence=0.7)
+                    time.sleep(0.3)
+                    click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
+            except Exception as e:
+                print(f"Error in farming bot: {e}")
+                if not running:
+                    return
+                # Wait a bit before trying again to avoid spamming errors
+                time.sleep(2)
+
 
 def start_bot():
-    global running, bot_thread, elixir_check_frequency, keyboard_thread, stop_event, elixir_check_counter, ability_cooldown, warplace_attempts
+    global running, bot_thread, elixir_check_frequency, keyboard_thread, stop_event, elixir_check_counter, ability_cooldown, warplace_attempts, trophy_dumping_mode
     elixir_check_counter = 0  # Reset the elixir check counter when starting the bot
     
     # Update elixir check frequency from UI
@@ -468,7 +528,11 @@ def start_bot():
     except ValueError:
         messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
         return
-    
+    try:
+        trophy_dumping_mode = bool(trophy_dumping_var.get())
+    except ValueError:
+        messagebox.showerror("Error", "Trophy dumping mode must be a boolean value")
+        return
 
     if not running:
         # Reset the stop_event - critical for restarting
@@ -578,6 +642,19 @@ ability_cd_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
 ability_cd_entry = ttk.Entry(settings_frame, width=5)
 ability_cd_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
 ability_cd_entry.insert(0, str(ability_cooldown))
+
+# Add trophy dumping mode setting (row 4)
+# Create a BooleanVar to store the checkbox state
+trophy_dumping_var = tk.BooleanVar(value=trophy_dumping_mode)
+
+trophy_dumping_mode_label = ttk.Label(settings_frame, text="Trophy Dumping Mode:")
+trophy_dumping_mode_label.grid(row=4, column=0, sticky="w", padx=5, pady=5)
+
+trophy_dumping_mode_cb = ttk.Checkbutton(settings_frame, variable=trophy_dumping_var)
+trophy_dumping_mode_cb.grid(row=4, column=1, sticky="w", padx=5, pady=5)
+
+
+
 
 # Create a control frame
 control_frame = ttk.Frame(root, padding="10")
