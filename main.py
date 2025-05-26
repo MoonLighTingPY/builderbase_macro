@@ -153,12 +153,12 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
             monitor = {"top": region[1], "left": region[0], "width": region[2]-region[0], "height": region[3]-region[1]} if region else {"top": 0, "left": 0, "width": screen_width, "height": screen_height}
             screenshot = np.array(thread_sct.grab(monitor))
             screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2BGR)
-            
+
             # Multi-scale template matching
             best_val = 0
             best_loc = None
             best_scale = 1.0
-            
+
             # Try different scales to account for different resolutions
             for scale in scales:
                 # Resize the template according to the scale
@@ -282,7 +282,7 @@ def find_warplace_and_deploy_troops():
         
         if warplace_location:
             deploy_troops(warplace_location, delay=troop_deploy_delay)
-            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.7, parsemode=True):
+            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 # If the troop was deployed successfully, we can exit the loop
                 print(f"Troop deployed successfully at {warplace_location}!")
                 found_warplace = True
@@ -308,7 +308,7 @@ def find_warplace_and_deploy_troops():
             time.sleep(0.35)
 
             # Check if the troop was deployed successfully
-            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.7, parsemode=True):
+            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("Troop deployed successfully using fallback method!")
                 # If successful, deploy other troops and the hero at the discovered location
                 deploy_troops((random_x, random_y), delay=troop_deploy_delay)
@@ -393,20 +393,21 @@ def farming_bot():
 
             # Wait for troops menu to appear before deploying troops
             while running:
-                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.7):
+                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                     print("Battle verify found, troops menu is ready.")
                     # Found battle_verify, we can proceed
                     break
                 if not running:
                     return
             
+            print("Deploying troops for the first village...")
             # Deploy troops at the first village
             find_warplace_and_deploy_troops()
 
             # Wait for the first battle to finish. This is done by looking for "battle ends in:" text (battle_verify image)
             # If the text is not found, we assume the battle is still going on
             battle_finished = False # Flag to indicate if we are in the first village battle
-            while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.7, parsemode=True):
+            while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("First village battle is not finished yet.")
                 
                 # Check for return home button
@@ -425,6 +426,7 @@ def farming_bot():
                 # Deploy troops at the second village
                 print("Battle advanced to the second village.")
                 time.sleep(1)  # Wait a bit to ensure the second village is "loaded"
+                print("Deploying troops for the second village...")
                 find_warplace_and_deploy_troops()
 
                 # Wait for the second battle to finish. This is done by looking for the return home button
@@ -466,7 +468,7 @@ def start_bot():
         messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
         return
     
-    
+
     if not running:
         # Reset the stop_event - critical for restarting
         stop_event.clear()
