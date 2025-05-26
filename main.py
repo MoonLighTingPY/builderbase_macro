@@ -12,6 +12,7 @@ from tkinter import ttk, messagebox
 import keyboard
 import signal
 import atexit
+import random
 
 def resource_path(relative_path):
     # Get absolute path to resource, works for dev and for PyInstaller
@@ -42,7 +43,7 @@ elixir_check_frequency = 2 # Check elixir every N battles
 last_ability_time = 0  # Track when we last used the hero ability
 
 # Bot timing settings
-troop_deploy_delay = 0.1  # Delay between troop deployment actions
+troop_deploy_delay = 0.3  # Delay between troop deployment actions
 ability_cooldown = 2.5   # Seconds between hero ability casts
 warplace_attempts = 8  # Number of attempts to find the warplace before giving up
 
@@ -216,7 +217,6 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
 def deploy_troops(location, delay, one_troop_only=False):
     pyautogui.moveTo(location)
     pyautogui.click(location)
-    time.sleep(delay)
     
     if not one_troop_only:
         # Deploy troops and cast abilities using keys 1-8 and Q
@@ -224,11 +224,12 @@ def deploy_troops(location, delay, one_troop_only=False):
         for _ in range(2):  # Loop twice: first for deployment, second for abilities
             for key in troop_keys:
                 if stop_event.is_set():
-                    return
-                time.sleep(delay)
+                    return               
                 pydirectinput.press(key)
                 if _ == 0:  # Only click during the first loop (deployment phase)
                     pyautogui.click()
+                    # random delay to avoid detection (from 0.1 to specified delay)
+                    time.sleep(random.uniform(0.1, delay))
     else:
         # Deploy only one troop (the first one)
         pydirectinput.press("1")
@@ -403,6 +404,7 @@ def farming_bot():
                 while running:
                     if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                         print("Battle verify found, troops menu is ready.")
+                        time.sleep(0.5)
                         # Found battle_verify, we can proceed
                         break
                     if not running:
