@@ -255,7 +255,7 @@ def check_elixir():
         for _ in range(10):
             pyautogui.scroll(-25000)
             time.sleep(0.02)
-    time.sleep(0.5)
+    pyautogui.scroll(500)
 
     
     # Try to find and click the elixir cart and collect it
