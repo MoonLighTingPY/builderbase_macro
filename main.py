@@ -249,13 +249,13 @@ def check_elixir():
         pyautogui.moveTo(screen_width // 2, screen_height // 2)
         for _ in range(10):
             pyautogui.scroll(25000)
-            time.sleep(0.05)
+            time.sleep(0.02)
         # Move mouse to the bottom of the screen to zoom out and outwards (because the elixir cart is at the bottom of the base)
         pyautogui.moveTo(screen_width // 2, screen_height - 100)
         for _ in range(10):
             pyautogui.scroll(-25000)
-            time.sleep(0.05)
-    time.sleep(1)
+            time.sleep(0.02)
+    time.sleep(0.5)
 
     
     # Try to find and click the elixir cart and collect it
@@ -378,7 +378,8 @@ def farming_bot():
             if elixir_check_counter >= elixir_check_frequency:
                 elixir_check_counter = 0
                 print("Checking for elixir this iteration")
-                check_elixir()
+            check_elixir()
+
 
            
             # Press the attack button to open the battle menu
