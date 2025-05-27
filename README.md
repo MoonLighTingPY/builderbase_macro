@@ -1,6 +1,6 @@
 # 💥 Clash of Clans: Builder Base Resources Farming Bot
 
-> Fully automated resource farming using **Night Witches** in Builder Base  
+> Fully automated resource farming in Builder Base  
 > ⚠️ *Works only with English UI*
 
 
@@ -14,6 +14,7 @@
 
 ## ⚙️ Setup (Pre-requirements)
 
+1. Download Official [Clash of Clans for PC](https://play.google.com/pc-store/games/details?id=com.supercell.clashofclans&hl=en) from **Google Play Games**
 1. Set Clash of Clans language to: **English**
 2. Make sure the game is in **Fullscreen mode**
 3. Choose a classic scenery **(Forest)**
