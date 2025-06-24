@@ -264,7 +264,7 @@ def check_elixir():
 # Add a dedicated function to check and dismiss star bonus popup
 def check_and_dismiss_star_bonus():
     """Check for star bonus popup and dismiss it if found"""
-    if click_image_core(IMAGE_PATHS["okay_starbonus"], region=regions["bottom_half"], confidence=0.7, loop=False, parsemode=False):
+    if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False):
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
         return True
@@ -414,12 +414,19 @@ def farming_bot():
                     # Use safe operation for elixir check
                     safe_operation(check_elixir, "elixir check")
 
-                # Press the attack button to open the battle menu
-                click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
+                # Press the attack button to open the battle menu - wrapped with safe_operation
+                safe_operation(
+                    lambda: click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7),
+                    "battle open click"
+                )
                 time.sleep(0.3)
 
-                # Simple click for battle_start - no special handling needed
-                click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
+                # Simple click for battle_start - wrapped with safe_operation
+                safe_operation(
+                    lambda: click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7),
+                    "battle start click"
+                )
+
 
                 # Wait for troops menu to appear before deploying troops
                 while running:
