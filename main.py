@@ -300,7 +300,6 @@ def find_warplace_and_deploy_troops(one_troop_only=False):
                 return  
             else:
                 print(f"Failed to deploy troops at {warplace_location}. Retrying with next warplace image.")
-     
 
     # If any warplace image is found, try to deploy troops by clicking random places
     # This is a fallback method to ensure troops are deployed even if the warplace image is not found
@@ -314,9 +313,9 @@ def find_warplace_and_deploy_troops(one_troop_only=False):
             random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
             # Try to deploy a troop by clicking the random place
             pydirectinput.press("1")
-            time.sleep(0.1)
+            time.sleep(0.05)
             pyautogui.click(random_x, random_y)
-            time.sleep(0.35)
+            time.sleep(0.1)
 
             # Check if the troop was deployed successfully
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
@@ -411,6 +410,10 @@ def farming_bot():
                         time.sleep(0.5)
                         # Found battle_verify, we can proceed
                         break
+
+                    else:
+                        print("Waiting for troops menu to appear...")
+                        time.sleep(0.2)  # Wait before checking again
                     if not running:
                         return
                 
