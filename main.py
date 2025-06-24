@@ -233,8 +233,7 @@ def check_elixir():
     # Scroll so the elixir cart is visible in case it is not
     for _ in range(3):
         # Move mouse to the middle of the screen to zoom in
-        if check_and_dismiss_star_bonus():
-            return False # If star bonus was found, return False to just skip the elixir check for this iteration
+
         pyautogui.moveTo(screen_width // 2, screen_height // 2)
         for _ in range(10):
             pyautogui.scroll(25000)
@@ -245,7 +244,8 @@ def check_elixir():
             pyautogui.scroll(-25000)
             time.sleep(0.02)
     pyautogui.scroll(500)
-
+    if check_and_dismiss_star_bonus():
+        return False # If star bonus was found, return False to just skip the elixir check for this iteration
     
     # Try to find and click the elixir cart and collect it
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
@@ -475,7 +475,7 @@ def farming_bot():
                     
                     # CRITICAL: Check for star bonus after clicking return home
                     print("Battle finished, returning home...")
-                    time.sleep(0.5)  # Wait a bit for popup to appear
+                    time.sleep(1.5)  # Wait a bit for popup to appear
                     check_and_dismiss_star_bonus()                    
             except Exception as e:
                 print(f"Error in farming bot: {e}")
