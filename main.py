@@ -264,7 +264,7 @@ def check_elixir():
 # Add a dedicated function to check and dismiss star bonus popup
 def check_and_dismiss_star_bonus():
     """Check for star bonus popup and dismiss it if found"""
-    if click_image_core(IMAGE_PATHS["okay_starbonus"], None, 0.7, False, [0.75, 1.0, 1.25]):
+    if click_image_core(IMAGE_PATHS["okay_starbonus"], region=regions["bottom_half"], confidence=0.7, loop=False, parsemode=False):
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
         return True
