@@ -224,12 +224,13 @@ def deploy_troops(location, delay, one_troop_only=False):
         for _ in range(2):  # Loop twice: first for deployment, second for abilities
             for key in troop_keys:
                 if stop_event.is_set():
-                    return               
+                    return
+                time.sleep(random.uniform(0.1, delay))             
                 pydirectinput.press(key)
                 if _ == 0:  # Only click during the first loop (deployment phase)
                     pyautogui.click()
                     # random delay to avoid detection (from 0.1 to specified delay)
-                    time.sleep(random.uniform(0.1, delay))
+
     else:
         # Deploy only one troop (the first one)
         pydirectinput.press("1")
@@ -269,10 +270,13 @@ def check_elixir():
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
         if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
             time.sleep(0.3)
-            click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"])
-            time.sleep(0.3)
-            click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
-            return True  # Success
+            if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"]):
+                time.sleep(0.3)
+                click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
+                return True  # Success
+            else:
+                print(f"Collect button {collect_img} not found for cart {cart_img}.")
+                return False
                 
     return False  # Indicate that a restart is needed
 
@@ -465,7 +469,7 @@ def farming_bot():
                 if elixir_check_counter >= elixir_check_frequency:
                     elixir_check_counter = 0
                     print("Checking for elixir this iteration")
-                check_elixir()
+                    check_elixir()
 
 
             
