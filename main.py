@@ -233,11 +233,13 @@ def check_elixir():
     # Scroll so the elixir cart is visible in case it is not
     for _ in range(3):
         # Move mouse to the middle of the screen to zoom in
+        if check_and_dismiss_star_bonus():
+            return False # If star bonus was found, return False to just skip the elixir check for this iteration
         pyautogui.moveTo(screen_width // 2, screen_height // 2)
         for _ in range(10):
             pyautogui.scroll(25000)
             time.sleep(0.02)
-        # Move mouse to the bottom of the screen to zoom out and outwards (because the elixir cart is at the bottom of the base)
+        # Move mouse to the bottom of the screen to zoom out and outwards, this will move the screen up (elixir cart is at the top of the base)
         pyautogui.moveTo(screen_width // 2, screen_height - 100)
         for _ in range(10):
             pyautogui.scroll(-25000)
