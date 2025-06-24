@@ -283,49 +283,64 @@ def check_elixir():
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
-def find_warplace_and_deploy_troops(one_troop_only=False):
+def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False):
     found_warplace = False # Flag to indicate if the warplace was found
 
+    # Choose the test troop key based on whether it's the second battle
+    test_troop_key = "7" if is_second_battle else "1"
 
     # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
-            deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=one_troop_only)
+            # First, test if the location is valid by deploying one troop
+            pyautogui.moveTo(warplace_location)
+            pyautogui.click(warplace_location)
+            pydirectinput.press(test_troop_key)
+            time.sleep(0.1)
+            pyautogui.click(warplace_location)
+            time.sleep(0.2)  # Wait a bit for the troop to be deployed
+            
+            # Check if the troop was actually deployed by looking for "ends_in"
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
-                # If the troop was deployed successfully, we can exit the loop
-                print(f"Troop deployed successfully at {warplace_location}!")
+                print(f"Test troop deployed successfully at {warplace_location}! Deploying all troops...")
+                # If successful and not one_troop_only, deploy all remaining troops
+                if not one_troop_only:
+                    deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=False)
                 found_warplace = True
                 return  
             else:
-                print(f"Failed to deploy troops at {warplace_location}. Retrying with next warplace image.")
+                print(f"Test troop failed to deploy at {warplace_location}. Trying next warplace image.")
 
-    # If any warplace image is found, try to deploy troops by clicking random places
-    # This is a fallback method to ensure troops are deployed even if the warplace image is not found
+    # If warplace images failed, try the fallback method
     if not found_warplace and not stop_event.is_set():
-        print(f"Could not deploy troops. Trying fallback method.")
-        for _ in range(15):  # Try clicking N random places. Usually 10 is enough
+        print(f"Could not deploy troops using warplace images. Trying fallback method.")
+        for _ in range(15):  # Try clicking N random places
             if stop_event.is_set():
                 return
-            # Click random places in the top half of the screen (to avoild the troops menu)
+            # Click random places in the top half of the screen
             random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
             random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
-            # Try to deploy a troop by clicking the random place
-            pydirectinput.press("1")
+            
+            # Test with one troop first
+            pyautogui.moveTo(random_x, random_y)
+            pyautogui.click(random_x, random_y)
+            pydirectinput.press(test_troop_key)
             time.sleep(0.05)
             pyautogui.click(random_x, random_y)
             time.sleep(0.1)
 
             # Check if the troop was deployed successfully
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
-                print("Troop deployed successfully using fallback method!")
-                # If successful, deploy other troops and the hero at the discovered location
-                deploy_troops((random_x, random_y), delay=troop_deploy_delay, one_troop_only=one_troop_only)
+                print("Test troop deployed successfully using fallback method!")
+                # If successful and not one_troop_only, deploy all remaining troops
+                if not one_troop_only:
+                    deploy_troops((random_x, random_y), delay=troop_deploy_delay, one_troop_only=False)
                 return  # Exit after success
+                
     # If we reach here, it means we couldn't deploy troops at any location
     print("Failed to deploy troops at any location. Ending battle.")
-    # In case this is the second village and we failed to deploy troops, we are able to end the battle.
     if click_image(IMAGE_PATHS["end_battle"], region=regions["bottom_right"], loop=False, confidence=0.7):
         time.sleep(0.3)
         click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7)
@@ -419,7 +434,7 @@ def farming_bot():
                 
                 print("Deploying troops for the first village...")
                 # Deploy troops at the first village
-                find_warplace_and_deploy_troops()
+                find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
                 # Wait for the first battle to finish. This is done by looking for "battle ends in:" text (battle_verify image)
                 # If the text is not found, we assume the battle is still going on
@@ -444,7 +459,7 @@ def farming_bot():
                     print("Battle advanced to the second village.")
                     time.sleep(1)  # Wait a bit to ensure the second village is "loaded"
                     print("Deploying troops for the second village...")
-                    find_warplace_and_deploy_troops()
+                    find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True)
 
                     # Wait for the second battle to finish. This is done by looking for the return home button
                     # If the return home button is not found, we assume the battle is still going on in the second village
@@ -497,7 +512,7 @@ def farming_bot():
                 
                 print("Deploying troops for the first village...")
                 # Deploy one troop at the first village
-                find_warplace_and_deploy_troops(one_troop_only=True)
+                find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
 
                 if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8):
                     print("Surrendering the first village battle to dump trophies.")
