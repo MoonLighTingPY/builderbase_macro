@@ -244,9 +244,7 @@ def check_elixir():
             pyautogui.scroll(-25000)
             time.sleep(0.02)
     pyautogui.scroll(500)
-    if check_and_dismiss_star_bonus():
-        return False # If star bonus was found, return False to just skip the elixir check for this iteration
-    
+
     # Try to find and click the elixir cart and collect it
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
         if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
@@ -270,20 +268,6 @@ def check_and_dismiss_star_bonus():
         return True
     return False
 
-# Add a safe operation wrapper for critical functions
-def safe_operation(operation_func, operation_name, check_star_bonus=True):
-    """Safely execute an operation with optional star bonus check"""
-    if check_star_bonus:
-        check_and_dismiss_star_bonus()
-    
-    try:
-        return operation_func()
-    except Exception as e:
-        print(f"Error in {operation_name}: {e}")
-        # Check for star bonus again in case it appeared during the operation
-        if check_star_bonus:
-            check_and_dismiss_star_bonus()
-        return False
 
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
@@ -400,32 +384,38 @@ def farming_bot():
     while running and not stop_event.is_set():
         if not trophy_dumping_mode:
             try:
-                # Check for star bonus at the start of each iteration
-                check_and_dismiss_star_bonus()
 
                 # Check if the game is open in the builder base by looking for the attack button
                 if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
-                    print("Game is open in the builder base, starting bot...")                       
+                    print("Game is open in the builder base, starting bot...")          
+
+                # Wait for star bonus popup to appear and dismiss it
+                time.sleep(2) 
+                # Check for star bonus popup before starting the battle
+                check_and_dismiss_star_bonus()
+             
                 
                 elixir_check_counter += 1
                 if elixir_check_counter >= elixir_check_frequency:
                     elixir_check_counter = 0
                     print("Checking for elixir this iteration")
                     # Use safe operation for elixir check
-                    safe_operation(check_elixir, "elixir check")
+                    check_elixir()
 
-                # Press the attack button to open the battle menu - wrapped with safe_operation
-                safe_operation(
-                    lambda: click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7),
-                    "battle open click"
-                )
+                
+                # Press the attack button to open the battle menu
+                click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
                 time.sleep(0.3)
+                # if check_and_dismiss_star_bonus():
+                #     print("Star bonus popup found 1, restarting battle sequence")
+                #     continue
 
-                # Simple click for battle_start - wrapped with safe_operation
-                safe_operation(
-                    lambda: click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7),
-                    "battle start click"
-                )
+                # Simple click for battle_start - no special handling needed
+                click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
+                # if check_and_dismiss_star_bonus():
+                #     print("Star bonus popup found 2, restarting battle sequence")
+                #     continue
+
 
 
                 # Wait for troops menu to appear before deploying troops
@@ -482,8 +472,8 @@ def farming_bot():
                     
                     # CRITICAL: Check for star bonus after clicking return home
                     print("Battle finished, returning home...")
-                    time.sleep(1.5)  # Wait a bit for popup to appear
-                    check_and_dismiss_star_bonus()                    
+
+                    
             except Exception as e:
                 print(f"Error in farming bot: {e}")
                 if not running:
