@@ -573,6 +573,7 @@ def stop_bot():
         print("Stopping bot...")
         running = False
         stop_event.set()  # Signal all threads to stop
+
         
         # Update UI safely
         if 'root' in globals():
@@ -604,6 +605,7 @@ def stop_bot():
         # Clear thread references after stopping
         bot_thread = None
         keyboard_thread = None
+        update_overlay_status("Bot ready!", color="green", root=root)
 
 def on_closing():
     stop_bot()
