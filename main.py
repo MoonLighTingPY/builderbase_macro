@@ -13,6 +13,7 @@ import keyboard
 import signal
 import atexit
 import random
+from overlay_status import update_overlay_status, hide_overlay_status, destroy_overlay_status
 
 def resource_path(relative_path):
     # Get absolute path to resource, works for dev and for PyInstaller
@@ -21,7 +22,6 @@ def resource_path(relative_path):
     except AttributeError:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
-
 
 keyboard_thread = None
 stop_event = threading.Event()
@@ -262,6 +262,14 @@ def check_elixir():
 # Add a dedicated function to check and dismiss star bonus popup
 def check_and_dismiss_star_bonus():
     """Check for star bonus popup and dismiss it if found"""
+
+    # Wait for star bonus popup to appear and dismiss it
+    update_overlay_status("Waiting for starbonus (0s.)", color="yellow", root=root)
+    time.sleep(1)
+    update_overlay_status("Waiting for starbonus (1s.)", color="yellow", root=root)
+    time.sleep(1)   
+    update_overlay_status("Waiting for starbonus (2s.)", color="yellow", root=root)
+
     if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False):
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
@@ -361,7 +369,7 @@ def safe_exit():
     global running
     running = False
     stop_event.set()
-    
+    destroy_overlay_status()
     # If this is called from Python exit, make sure threads are cleaned up
     if bot_thread and bot_thread.is_alive():
         try:
@@ -387,10 +395,8 @@ def farming_bot():
 
                 # Check if the game is open in the builder base by looking for the attack button
                 if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
-                    print("Game is open in the builder base, starting bot...")          
+                    print("Game is open in the builder base, starting bot...")
 
-                # Wait for star bonus popup to appear and dismiss it
-                time.sleep(2) 
                 # Check for star bonus popup before starting the battle
                 check_and_dismiss_star_bonus()
              
@@ -627,10 +633,12 @@ def stop_bot():
 
 def on_closing():
     stop_bot()
+    destroy_overlay_status()
     root.destroy()
 
 # Create the main UI window
 root = tk.Tk()
+update_overlay_status("Bot ready!", color="green", root=root)
 root.title("CoC Builder Base Farming Bot")
 root.geometry("600x500")
 root.protocol("WM_DELETE_WINDOW", on_closing)
