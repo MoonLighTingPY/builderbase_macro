@@ -281,61 +281,68 @@ def check_and_dismiss_star_bonus():
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False):
-    if not running or stop_event.is_set():
-        return
     found_warplace = False # Flag to indicate if the warplace was found
 
+    # Choose the test troop key based on whether it's the second battle
     test_troop_key = "7" if is_second_battle else "1"
 
+    # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
-        if not running or stop_event.is_set():
-            return
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
-        if not running or stop_event.is_set():
-            return
+        
         if warplace_location:
+            # First, test if the location is valid by deploying one troop
             pyautogui.moveTo(warplace_location)
             pyautogui.click(warplace_location)
             pydirectinput.press(test_troop_key)
             time.sleep(0.1)
             pyautogui.click(warplace_location)
-            time.sleep(0.2)
-            if not running or stop_event.is_set():
-                return
+            time.sleep(0.2)  # Wait a bit for the troop to be deployed
+            
+            # Check if the troop was actually deployed by looking for "ends_in"
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
-                if not running or stop_event.is_set():
-                    return
+                print(f"Test troop deployed successfully at {warplace_location}! Deploying all troops...")
+                # If successful and not one_troop_only, deploy all remaining troops
                 if not one_troop_only:
                     deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=False)
                 found_warplace = True
                 return  
+            else:
+                print(f"Test troop failed to deploy at {warplace_location}. Trying next warplace image.")
+
+    # If warplace images failed, try the fallback method
     if not found_warplace and not stop_event.is_set():
-        for _ in range(15):
-            if not running or stop_event.is_set():
+        print(f"Could not deploy troops using warplace images. Trying fallback method.")
+        for _ in range(15):  # Try clicking N random places
+            if stop_event.is_set():
                 return
+            # Click random places in the top half of the screen
             random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
             random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
+            
+            # Test with one troop first
             pyautogui.moveTo(random_x, random_y)
             pyautogui.click(random_x, random_y)
             pydirectinput.press(test_troop_key)
             time.sleep(0.05)
             pyautogui.click(random_x, random_y)
             time.sleep(0.1)
-            if not running or stop_event.is_set():
-                return
+
+            # Check if the troop was deployed successfully
             if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
-                if not running or stop_event.is_set():
-                    return
+                print("Test troop deployed successfully using fallback method!")
+                # If successful and not one_troop_only, deploy all remaining troops
                 if not one_troop_only:
                     deploy_troops((random_x, random_y), delay=troop_deploy_delay, one_troop_only=False)
-                return
-    if not running or stop_event.is_set():
-        return
+                return  # Exit after success
+                
+    # If we reach here, it means we couldn't deploy troops at any location
     print("Failed to deploy troops at any location. Ending battle.")
     if click_image(IMAGE_PATHS["end_battle"], region=regions["bottom_right"], loop=False, confidence=0.7):
         time.sleep(0.3)
         click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7)
         print("Battle ended due to failed troop deployment.")
+
 def cast_hero_ability():
     # Periodically cast the hero ability to help the troops
     global last_ability_time
