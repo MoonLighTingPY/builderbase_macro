@@ -575,31 +575,22 @@ def start_bot():
 
 def stop_bot():
     global running, bot_thread, keyboard_thread
-    
+
     if running:
         print("Stopping bot...")
         running = False
         stop_event.set()  # Signal all threads to stop
+        update_overlay_status("Bot ready!", color="green", root=root)
 
-        
-        # Update UI safely
+        # Immediately disable the start button to prevent double-clicks
         if 'root' in globals():
-            root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50"))
-            root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
-            root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
+            start_button.config(state="disabled")
+            root.after(0, lambda: status_label.config(text="Status: Stopping...", foreground="orange"))
+            root.after(0, lambda: log_text.insert(tk.END, "Stopping bot, please wait...\n"))
             root.after(0, lambda: log_text.see(tk.END))
-        
-        # Try to forcefully terminate operations that might be stuck
-        try:
-            # Press Escape key a few times to try to exit any in-game menus
-            for _ in range(3):
-                pydirectinput.press('escape')
-                time.sleep(0.1)
-        except Exception as e:
-            print(f"Error sending escape keys: {e}")
-            
+
         print("Stop event set, waiting for threads to terminate...")
-        
+
         # Give threads a chance to terminate gracefully
         if bot_thread and bot_thread.is_alive():
             try:
@@ -608,11 +599,18 @@ def stop_bot():
                     print("Warning: Bot thread is still running after timeout")
             except Exception as e:
                 print(f"Error joining bot thread: {e}")
-                
+
         # Clear thread references after stopping
         bot_thread = None
         keyboard_thread = None
-        update_overlay_status("Bot ready!", color="green", root=root)
+
+        # Re-enable the start button after stopping
+        if 'root' in globals():
+            root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50", state="normal"))
+            root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
+            root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
+            root.after(0, lambda: log_text.see(tk.END))
+
 
 def on_closing():
     stop_bot()
