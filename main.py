@@ -7,13 +7,10 @@ import sys
 import cv2
 import numpy as np
 from mss import mss
-import tkinter as tk
-from tkinter import ttk, messagebox
 import keyboard
 import signal
 import atexit
 import random
-from overlay_status import update_overlay_status, hide_overlay_status, destroy_overlay_status
 import threading
 
 def resource_path(relative_path):
@@ -24,7 +21,6 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-# Remove threading.Event and bot_thread
 bot_process = None
 keyboard_thread = None
 
@@ -196,7 +192,6 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
 def deploy_troops(location, delay, one_troop_only=False):
     pyautogui.moveTo(location)
     pyautogui.click(location)
-    
     if not one_troop_only:
         # Deploy troops and cast abilities using keys 1-8 and Q
         troop_keys = ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]
@@ -353,17 +348,13 @@ def keyboard_listener():
     try:
         keyboard.wait('p')  # Wait for the 'p' key to be pressed
         print("P key pressed, stopping bot...")
-        if 'root' in globals():
-            root.after(0, stop_bot)
-        else:
-            stop_bot()
+        stop_bot()
     except Exception as e:
         print(f"Keyboard listener stopped: {e}")
 
 # Function to handle safe exit
 def safe_exit():
     print("Performing safe exit...")
-    destroy_overlay_status()
     if bot_process is not None and bot_process.is_alive():
         try:
             bot_process.terminate()
@@ -383,15 +374,7 @@ signal.signal(signal.SIGTERM, lambda sig, frame: safe_exit())
 
 def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images):
     global elixir_check_counter, running
-    # DO NOT use root or update_overlay_status here!
-    # Only bot logic, no UI/overlay
-    # Remove all update_overlay_status(..., root=root) and similar calls
-    # If you want to log, use print() or write to a file
-
-    # Example:
     print("Bot process started")
-    # ...rest of your farming logic...
-
     if not trophy_dumping_mode:
         try:
             # Check if the game is open in the builder base by looking for the attack button
@@ -513,68 +496,28 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 return
             time.sleep(2)
 
-def start_bot():
-    global bot_process, keyboard_thread, elixir_check_frequency, elixir_check_counter, ability_cooldown, trophy_dumping_mode
-
-    elixir_check_counter = 0  # Reset the elixir check counter when starting the bot
-
-    # Update elixir check frequency from UI
-    try:
-        elixir_check_frequency = int(elixir_freq_entry.get())
-        if elixir_check_frequency <= 0:
-            messagebox.showerror("Error", "Elixir check frequency must be greater than 0")
-            return
-    except ValueError:
-        messagebox.showerror("Error", "Elixir check frequency must be a number")
-        return
-
-    # Update delays and cooldown from UI
-    try:
-        ability_cooldown = float(ability_cd_entry.get())
-        if troop_deploy_delay < 0 or ability_cooldown < 0:
-            raise ValueError
-    except ValueError:
-        messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
-        return
-    try:
-        trophy_dumping_mode = bool(trophy_dumping_var.get())
-    except ValueError:
-        messagebox.showerror("Error", "Trophy dumping mode must be a boolean value")
-        return
-
+def start_bot(elixir_freq, ability_cd, trophy_dumping):
+    global bot_process, keyboard_thread, elixir_check_frequency, elixir_check_counter, ability_cooldown, trophy_dumping_mode, running
+    elixir_check_counter = 0
+    elixir_check_frequency = elixir_freq
+    ability_cooldown = ability_cd
+    trophy_dumping_mode = trophy_dumping
+    running = True
     if bot_process is None or not bot_process.is_alive():
-        start_button.config(text="Stop Bot", bg="#ff6b6b")
-        status_label.config(text="Status: Running", foreground="green")
-        log_text.insert(tk.END, "Bot started...\n")
-        log_text.insert(tk.END, f"Elixir check frequency set to every {elixir_check_frequency} battles\n")
-        log_text.insert(tk.END, "Press 'P' key to stop the bot at any time\n")
-        log_text.see(tk.END)
-
-        # Start the bot process (no Tkinter/overlay in the process)
         bot_process = multiprocessing.Process(
             target=farming_bot_main,
             args=(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images)
         )
         bot_process.start()
-
-        # Keyboard listener remains in main process/thread
         keyboard_thread = threading.Thread(target=keyboard_listener)
         keyboard_thread.daemon = True
         keyboard_thread.start()
-    else:
-        stop_bot()
 
 def stop_bot():
-    global bot_process, keyboard_thread
-
+    global bot_process, keyboard_thread, running
+    running = False
     if bot_process is not None and bot_process.is_alive():
         print("Stopping bot process instantly...")
-        update_overlay_status("Bot ready!", color="green", root=root)
-        start_button.config(state="disabled")
-        root.after(0, lambda: status_label.config(text="Status: Stopping...", foreground="orange"))
-        root.after(0, lambda: log_text.insert(tk.END, "Stopping bot, please wait...\n"))
-        root.after(0, lambda: log_text.see(tk.END))
-
         bot_process.terminate()
         bot_process.join(timeout=2.0)
         if bot_process.is_alive():
@@ -582,128 +525,6 @@ def stop_bot():
         bot_process = None
         keyboard_thread = None
 
-        root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50", state="normal"))
-        root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
-        root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
-        root.after(0, lambda: log_text.see(tk.END))
-
-def on_closing():
-    stop_bot()
-    destroy_overlay_status()
-    root.destroy()
-
 if __name__ == "__main__":
-    # Create the main UI window
-    root = tk.Tk()
-    update_overlay_status("Bot ready!", color="green", root=root)
-    root.title("CoC Builder Base Farming Bot")
-    root.geometry("600x500")
-    root.protocol("WM_DELETE_WINDOW", on_closing)
-
-    # Configure the grid
-    root.grid_columnconfigure(0, weight=1)
-    root.grid_rowconfigure(3, weight=1)
-
-    # Create a header frame
-    header_frame = ttk.Frame(root, padding="10")
-    header_frame.grid(row=0, column=0, sticky="ew")
-
-    # Add a title
-    title_label = ttk.Label(header_frame, text="Clash of Clans Builder Base Farming Bot", font=("Helvetica", 16, "bold"))
-    title_label.pack(pady=10)
-
-    # Create a settings frame
-    settings_frame = ttk.LabelFrame(root, text="Settings", padding="10")
-    settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
-
-    # Add elixir frequency setting (row 0)
-    elixir_freq_label = ttk.Label(settings_frame, text="Check Elixir Every N Battles:")
-    elixir_freq_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
-
-    elixir_freq_entry = ttk.Entry(settings_frame, width=5)
-    elixir_freq_entry.grid(row=0, column=1, sticky="w", padx=5, pady=5)
-    elixir_freq_entry.insert(0, str(elixir_check_frequency))
-
-    # Resolution info
-    resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
-    resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
-
-
-    # Add hero ability cooldown setting (row 3)
-    ability_cd_label = ttk.Label(settings_frame, text="Hero Ability Cooldown (s):")
-    ability_cd_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
-    ability_cd_entry = ttk.Entry(settings_frame, width=5)
-    ability_cd_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
-    ability_cd_entry.insert(0, str(ability_cooldown))
-
-    # Add trophy dumping mode setting (row 4)
-    # Create a BooleanVar to store the checkbox state
-    trophy_dumping_var = tk.BooleanVar(value=trophy_dumping_mode)
-
-    trophy_dumping_mode_label = ttk.Label(settings_frame, text="Trophy Dumping Mode:")
-    trophy_dumping_mode_label.grid(row=4, column=0, sticky="w", padx=5, pady=5)
-
-    trophy_dumping_mode_cb = ttk.Checkbutton(settings_frame, variable=trophy_dumping_var)
-    trophy_dumping_mode_cb.grid(row=4, column=1, sticky="w", padx=5, pady=5)
-
-
-
-
-    # Create a control frame
-    control_frame = ttk.Frame(root, padding="10")
-    control_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
-
-    # Add start button with custom style
-    start_button = tk.Button(
-        control_frame, 
-        text="Start Bot", 
-        font=("Helvetica", 12, "bold"),
-        bg="#4CAF50", 
-        fg="white",
-        activebackground="#45a049",
-        activeforeground="white",
-        width=15,
-        height=2,
-        command=start_bot
-    )
-    start_button.pack(side="left", padx=10)
-
-    # Add status label
-    status_label = ttk.Label(control_frame, text="Status: Not Running", font=("Helvetica", 10), foreground="red")
-    status_label.pack(side="left", padx=20)
-
-    # Create a log frame
-    log_frame = ttk.LabelFrame(root, text="Bot Log", padding="10")
-    log_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
-
-    # Create a scrollable text widget for logs
-    log_text = tk.Text(log_frame, height=10, width=70, wrap=tk.WORD)
-    log_text.pack(side="left", fill="both", expand=True)
-
-    # Add a scrollbar to the log text
-    log_scroll = ttk.Scrollbar(log_frame, command=log_text.yview)
-    log_scroll.pack(side="right", fill="y")
-    log_text.config(yscrollcommand=log_scroll.set)
-
-
-    # Add some initial log messages
-    log_text.insert(tk.END, "Bot initialized and ready to start...\n")
-    log_text.insert(tk.END, "Please make sure Clash of Clans is running in fullscreen mode\n")
-    log_text.insert(tk.END, "and you are in the Builder Base before starting the bot.\n\n")
-    log_text.insert(tk.END, "⚠️ DISCLAIMER: Using automation tools may violate Supercell's Terms of Service.\n")
-    log_text.insert(tk.END, "This tool is for educational purposes only. Use at your own risk.\n")
-    log_text.see(tk.END)
-
-    # Add a footer with instructions
-    footer_frame = ttk.Frame(root, padding="10")
-    footer_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
-
-    instructions_label = ttk.Label(
-        footer_frame, 
-        text="Instructions: Start the bot, then switch back to Clash of Clans within 3 seconds.",
-        font=("Helvetica", 9, "italic")
-    )
-    instructions_label.pack()
-
-    # Start the UI main loop
-    root.mainloop()
+    import gui
+    gui.main()
