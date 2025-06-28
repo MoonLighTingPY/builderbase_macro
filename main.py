@@ -392,138 +392,118 @@ def farming_bot():
     while running and not stop_event.is_set():
         if not trophy_dumping_mode:
             try:
-
                 # Check if the game is open in the builder base by looking for the attack button
+                update_overlay_status("Waiting for Builder Base...", color="yellow", root=root)
                 if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
                     print("Game is open in the builder base, starting bot...")
 
                 # Check for star bonus popup before starting the battle
                 check_and_dismiss_star_bonus()
-             
-                
+
                 elixir_check_counter += 1
                 if elixir_check_counter >= elixir_check_frequency:
                     elixir_check_counter = 0
                     print("Checking for elixir this iteration")
-                    # Use safe operation for elixir check
+                    update_overlay_status("Collecting elixir...", color="purple", root=root)
                     check_elixir()
 
-                
                 # Press the attack button to open the battle menu
+                update_overlay_status("Starting battle", color="yellow", root=root)
                 click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
                 time.sleep(0.3)
-                # if check_and_dismiss_star_bonus():
-                #     print("Star bonus popup found 1, restarting battle sequence")
-                #     continue
 
                 # Simple click for battle_start - no special handling needed
                 click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
-                # if check_and_dismiss_star_bonus():
-                #     print("Star bonus popup found 2, restarting battle sequence")
-                #     continue
-
-
 
                 # Wait for troops menu to appear before deploying troops
+                update_overlay_status("Waiting for battle", color="yellow", root=root)
                 while running:
                     if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                         print("Battle verify found, troops menu is ready.")
                         time.sleep(0.5)
-                        # Found battle_verify, we can proceed
                         break
                     else:
                         print("Waiting for troops menu to appear...")
-                        time.sleep(0.2)  # Wait before checking again
+                        time.sleep(0.2)
                     if not running:
                         return
-                
+
+                update_overlay_status("Deploying troops...", color="orange", root=root)
                 print("Deploying troops for the first village...")
                 find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
-                # Wait for the first battle to finish. This is done by looking for "battle ends in:" text (battle_verify image)
-                # If the text is not found, we assume the battle is still going on
-                battle_finished = False # Flag to indicate if we are in the first village battle
+                # Wait for the first battle to finish
+                update_overlay_status("1st Battle in progress...", color="yellow", root=root)
+                battle_finished = False
                 while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                     print("First village battle is not finished yet.")
-                    
-                    # Check for return home button
                     if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                         battle_finished = True
                         print("First village battle didn't advance to the second village. Returning home.")
-                        # CRITICAL: Check for star bonus after clicking return home
-                        time.sleep(0.5)  # Wait a bit for popup to appear
+                        update_overlay_status("Returning home...", color="yellow", root=root)
+                        time.sleep(0.5)
                         check_and_dismiss_star_bonus()
                         break
                     cast_hero_ability()
                     if not running:
                         return
 
-                # Battle is still going on
                 if battle_finished == False and running:
-
-                    # The battle advanced to the second village, as the return home button is not found but new troops are found
-                    # Deploy troops at the second village
+                    update_overlay_status("Second village: deploying troops...", color="orange", root=root)
                     print("Battle advanced to the second village.")
-                    time.sleep(1)  # Wait a bit to ensure the second village is "loaded"
+                    time.sleep(1)
                     print("Deploying troops for the second village...")
                     find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True)
 
-                    # Wait for the second battle to finish. This is done by looking for the return home button
-                    # If the return home button is not found, we assume the battle is still going on in the second village
+                    update_overlay_status("2nd Battle in progress...", color="yellow", root=root)
                     while running and not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
-                        print("Second village battle not finished yet.")               
+                        print("Second village battle not finished yet.")
                         cast_hero_ability()
                         if not running:
                             return
-                    
-                    # CRITICAL: Check for star bonus after clicking return home
+
+                    update_overlay_status("Battle finished, returning home...", color="green", root=root)
                     print("Battle finished, returning home...")
 
-                    
             except Exception as e:
                 print(f"Error in farming bot: {e}")
+                update_overlay_status("Unexpected erro! Please write about this in issues on my github repo MoonLighTingPY/builderbase_macro", color="red", root=root)
                 if not running:
                     return
-                # Wait a bit before trying again to avoid spamming errors
                 time.sleep(2)
         elif trophy_dumping_mode:
             try:
-
-                # Check if the game is open in the builder base by looking for the attack button
+                update_overlay_status("Trophy dump: waiting for Builder Base...", color="yellow", root=root)
                 if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
-                    print("Game is open in the builder base, starting bot...")                       
-                
+                    print("Game is open in the builder base, starting bot...")
+
                 elixir_check_counter += 1
                 if elixir_check_counter >= elixir_check_frequency:
                     elixir_check_counter = 0
                     print("Checking for elixir this iteration")
+                    update_overlay_status("Collecting elixir...", color="yellow", root=root)
                     check_elixir()
 
-
-            
-                # Press the attack button to open the battle menu
+                update_overlay_status("Trophy dump: Starting battle", color="yellow", root=root)
                 click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
                 time.sleep(0.3)
 
-                # Check if we need to restart the battle sequence if we found a star bonus popup
-                result = click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
-                if result == "restart":
-                    print("Star bonus popup handled, restarting battle sequence")
-                    continue  # Restart the loop from the beginning
+                click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
-                # Wait for troops menu to appear before deploying troops
+
+                update_overlay_status("Trophy dump: Waiting for battle...", color="yellow", root=root)
                 while running:
                     if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                         print("Battle verify found, troops menu is ready.")
-                        # Found battle_verify, we can proceed
                         break
                     if not running:
                         return
-                
+
+                update_overlay_status("Trophy dump: deploying one troop...", color="orange", root=root)
                 print("Deploying troops for the first village...")
-                # Deploy one troop at the first village
                 find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
 
+                update_overlay_status("Trophy dump: surrendering", color="red", root=root)
                 if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8):
                     print("Surrendering the first village battle to dump trophies.")
                     time.sleep(0.3)
@@ -532,11 +512,12 @@ def farming_bot():
                     click_image(IMAGE_PATHS["return_home"], loop=True, confidence=0.7)
                     time.sleep(0.3)
                     click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
+                    update_overlay_status("Trophy dump: returned home.", color="green", root=root)
             except Exception as e:
                 print(f"Error in farming bot: {e}")
+                update_overlay_status("Unexpected erro! Please write about this in issues on my github repo MoonLighTingPY/builderbase_macro", color="red", root=root)
                 if not running:
                     return
-                # Wait a bit before trying again to avoid spamming errors
                 time.sleep(2)
 
 

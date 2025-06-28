@@ -7,6 +7,7 @@ class OverlayStatus:
         "orange": "#FFA500",
         "red": "#FF0000",
         "green": "#00FF00",
+        "purple": "#CA00CA",
         "default": "#222222"
     }
     ALPHA = 0.75
