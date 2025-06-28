@@ -23,7 +23,7 @@ def resource_path(relative_path):
 
 bot_process = None
 keyboard_thread = None
-
+stop_event = None  # Will be set in main
 
 # Initialize mss for screen capture
 sct = mss()
@@ -110,13 +110,14 @@ IMAGE_PATHS = {
 # parsemode, boolean, defines whether to return the coordinates of the image instead of clicking it
 # loop, boolean, defines whether to keep trying to find the image until it is found or no
 def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True, scales=[1.0], stop_event=None):
-    if stop_event is not None and stop_event.is_set():
-        return
-    if loop:
+    while True:
         if stop_event is not None and stop_event.is_set():
-            return
-        if click_image_core(image_path, region, confidence, parsemode, scales, stop_event=stop_event):
-            return True
+            return False
+        result = click_image_core(image_path, region, confidence, parsemode, scales, stop_event=stop_event)
+        if result:
+            return result
+        if not loop:
+            return result
     else:
         return click_image_core(image_path, region, confidence, parsemode, scales, stop_event=stop_event)
 
@@ -443,13 +444,14 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
             # Wait for troops menu to appear before deploying troops
             print("Waiting for battle")
             while True:
+                if stop_event.is_set():
+                        return
                 if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95, stop_event=stop_event):
                     print("Battle verify found, troops menu is ready.")
+                    
                     time.sleep(0.5)
                     break
                 else:
-                    if stop_event.is_set():
-                        return
                     print("Waiting for troops menu to appear...")
                     time.sleep(0.2)
 
@@ -546,7 +548,8 @@ def start_bot(elixir_freq, ability_cd, trophy_dumping):
 
 def stop_bot():
     global bot_process, keyboard_thread, stop_event
-    stop_event.set()
+    if stop_event is not None:
+        stop_event.set()
     if bot_process is not None and bot_process.is_alive():
         print("Stopping bot process instantly...")
         bot_process.terminate()
