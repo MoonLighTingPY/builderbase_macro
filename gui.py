@@ -3,7 +3,8 @@ import multiprocessing
 import time
 import threading
 import keyboard  # Global hotkey support
-from main import farming_bot_main, use_2k_images, screen_width, screen_height
+from main import farming_bot_main
+from resources import screen_width, screen_height, use_2k_images
 
 bot_process = None
 

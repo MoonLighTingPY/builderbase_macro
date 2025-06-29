@@ -10,17 +10,15 @@ from mss import mss
 import signal
 import atexit
 import random
-
-def resource_path(relative_path):
-    # Get absolute path to resource, works for dev and for PyInstaller
-    try:
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-
-bot_process = None
-keyboard_thread = None
+from resources import (
+    resource_path,
+    screen_width,
+    screen_height,
+    use_2k_images,
+    image_dir,
+    regions,
+    IMAGE_PATHS,
+)
 
 # Initialize mss for screen capture
 sct = mss()
@@ -29,7 +27,6 @@ sct = mss()
 pyautogui.PAUSE = 0
 pydirectinput.PAUSE = 0
 # Get screen size
-screen_width, screen_height = pyautogui.size()
 
 error_last_print_time = {} # Track last error message time for each image
 ERROR_COOLDOWN = 1  # Time in seconds before printing the same error message again
@@ -44,58 +41,6 @@ ability_cooldown = 2.5   # Seconds between hero ability casts
 warplace_attempts = 8  # Number of attempts to find the warplace before giving up
 
 trophy_dumping_mode = False  # Set to True if you want to dump trophies instead of farming
-
-# Determine if we should use high resolution images
-use_2k_images = screen_width > 1920 or screen_height > 1080
-image_dir = "2k/" if use_2k_images else "fullhd/"
-
-print(f"Screen resolution: {screen_width}x{screen_height}, using {'2K' if use_2k_images else 'standard'} images")
-
-# Define screen regions. Used so we don't have to search the whole screen for images
-regions = {
-    "top_right": (screen_width // 2, 0, screen_width, screen_height // 2),
-    "bottom_left": (0, screen_height // 2, screen_width // 2, screen_height),
-    "bottom_right": (screen_width // 2, screen_height // 2, screen_width, screen_height),
-    "whole_screen": (0, 0, screen_width, screen_height),
-    "top_half": (0, 0, screen_width, screen_height // 2),
-    "bottom_half": (0, screen_height // 2, screen_width, screen_height)
-}
-
-# Paths to image assets
-IMAGE_PATHS = {
-    # Elixir Cart Images
-    "elixir_cart_0": resource_path(f"{image_dir}elixir_cart/elixir_cart_0.png"),
-    "elixir_cart_1": resource_path(f"{image_dir}elixir_cart/elixir_cart_1.png"),
-    "elixir_cart_2": resource_path(f"{image_dir}elixir_cart/elixir_cart_2.png"),
-    "elixir_cart_3": resource_path(f"{image_dir}elixir_cart/elixir_cart_3.png"),
-    "elixir_cart_4": resource_path(f"{image_dir}elixir_cart/elixir_cart_4.png"),
-    "elixir_cart_6": resource_path(f"{image_dir}elixir_cart/elixir_cart_6.png"),
-    "elixir_cart_7": resource_path(f"{image_dir}elixir_cart/elixir_cart_7.png"),
-    
-    # Button Images
-    "collect_full": resource_path(f"{image_dir}buttons/collect_full.png"),
-    "collect_empty": resource_path(f"{image_dir}buttons/collect_empty.png"),
-    "close_elixir": resource_path(f"{image_dir}buttons/close_elixir.png"),
-    "battle_open": resource_path(f"{image_dir}buttons/attack.png"),
-    "battle_start": resource_path(f"{image_dir}buttons/find_now.png"),
-    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
-    "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
-    "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
-    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
-    "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
-    "okay_starbonus": resource_path(f"{image_dir}buttons/okay_starbonus.png"),
-
-    # Other Images
-    "start_app": resource_path(f"{image_dir}start_app.png"),
-    "battle_verify": resource_path(f"{image_dir}battle_verify.png"),
-    "attack_cooldown": resource_path(f"{image_dir}attack_cooldown.png"),
-    "ends_in": resource_path(f"{image_dir}ends_in.png"),
-
-
-    # Places to deploy troops
-    "warplace": [resource_path(os.path.join(image_dir, "warplace", img)) for img in os.listdir(resource_path(os.path.join(image_dir, "warplace"))) if img.endswith(".png")]
-}
-
 
 # Function to click on an image on the screen
 # This function will keep trying to find the image until it is found or the loop is broken
@@ -113,9 +58,7 @@ def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=
             return result
         if not loop:
             return result
-    else:
-        return click_image_core(image_path, region, confidence, parsemode, scales)
-
+        
 def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0, 2.0, 1.75, 1.5, 1.25, 0.75, 0.5]): 
     try:
         # Create a thread-local instance of mss for thread safety
@@ -266,7 +209,6 @@ def check_and_dismiss_star_bonus():
         return True
     return False
 
-
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
@@ -339,12 +281,6 @@ def cast_hero_ability():
         pydirectinput.press("q")
         last_ability_time = current_time
 
-
-
-# Global thread reference
-bot_thread = None
-
-
 def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images):
     global elixir_check_counter
     print("Bot process started")
@@ -384,8 +320,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     print("Waiting for troops menu to appear...")
                     time.sleep(0.2)
 
-
-
             print("Deploying troops for the first village...")
             find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
@@ -402,7 +336,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     break
                 cast_hero_ability()
 
-
             if battle_finished == False:
                 print("Battle advanced to the second village.")
                 time.sleep(1)
@@ -413,7 +346,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                     print("Second village battle not finished yet.")
                     cast_hero_ability()
-
 
                 print("Battle finished, returning home...")
 
@@ -434,13 +366,11 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
 
             click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
-
             print("Trophy dump: Waiting for battle...")
             while True:
                 if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                     print("Battle verify found, troops menu is ready.")
                     break
-
 
             print("Trophy dump: deploying one troop...")
             find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
@@ -455,8 +385,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 time.sleep(0.3)
                 click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
                 print("Trophy dump: returned home.")
-
-
 
 if __name__ == "__main__":
     import gui
