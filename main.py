@@ -7,11 +7,9 @@ import sys
 import cv2
 import numpy as np
 from mss import mss
-import keyboard
 import signal
 import atexit
 import random
-import threading
 
 def resource_path(relative_path):
     # Get absolute path to resource, works for dev and for PyInstaller
@@ -341,14 +339,6 @@ def cast_hero_ability():
         pydirectinput.press("q")
         last_ability_time = current_time
 
-# Function that runs in a separate thread to monitor pause bot key press 
-def keyboard_listener():
-    try:
-        keyboard.wait('p')  # Wait for the 'p' key to be pressed
-        print("P key pressed, stopping bot...")
-        stop_bot()
-    except Exception as e:
-        print(f"Keyboard listener stopped: {e}")
 
 # Function to handle safe exit
 def safe_exit():
@@ -480,33 +470,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 print("Trophy dump: returned home.")
 
 
-def start_bot(elixir_freq, ability_cd, trophy_dumping):
-    global bot_process, keyboard_thread, elixir_check_frequency, elixir_check_counter, ability_cooldown, trophy_dumping_mode
-    elixir_check_counter = 0
-    elixir_check_frequency = elixir_freq
-    ability_cooldown = ability_cd
-    trophy_dumping_mode = trophy_dumping
-    if bot_process is None or not bot_process.is_alive():
-        ctx = multiprocessing.get_context("spawn")
-        bot_process = ctx.Process(
-            target=farming_bot_main,
-            args=(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images)
-        )
-        bot_process.start()
-        keyboard_thread = threading.Thread(target=keyboard_listener)
-        keyboard_thread.daemon = True
-        keyboard_thread.start()
-
-def stop_bot():
-    global bot_process, keyboard_thread
-    if bot_process is not None and bot_process.is_alive():
-        print("Stopping bot process instantly...")
-        bot_process.terminate()
-        bot_process.join(timeout=2.0)
-        if bot_process.is_alive():
-            print("Warning: Bot process is still running after terminate()")
-        bot_process = None
-        keyboard_thread = None
 
 if __name__ == "__main__":
     import gui

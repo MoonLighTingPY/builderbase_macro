@@ -5,19 +5,25 @@ from main import farming_bot_main, use_2k_images, screen_width, screen_height
 
 bot_process = None
 
-def start_bot_callback(sender, app_data, user_data):
+def start_bot(elixir_freq, ability_cd, trophy_dumping):
     global bot_process
+    if bot_process is None or not bot_process.is_alive():
+        ctx = multiprocessing.get_context("spawn")
+        bot_process = ctx.Process(
+            target=farming_bot_main,
+            args=(elixir_freq, ability_cd, trophy_dumping, screen_width, screen_height, use_2k_images)
+        )
+        bot_process.start()
+
+
+def start_bot_callback(sender, app_data, user_data):
     elixir_freq = dpg.get_value("elixir_freq")
     ability_cd = dpg.get_value("ability_cd")
     trophy_dumping = dpg.get_value("trophy_dumping")
     dpg.set_value("status_text", "🟢 Running")
     dpg.set_value("log", dpg.get_value("log") + "🚀 Bot started...\n")
-    if bot_process is None or not bot_process.is_alive():
-        bot_process = multiprocessing.Process(
-            target=farming_bot_main,
-            args=(elixir_freq, ability_cd, trophy_dumping, screen_width, screen_height, use_2k_images)
-        )
-        bot_process.start()
+    start_bot(elixir_freq, ability_cd, trophy_dumping)
+
 
 def stop_bot_callback(sender, app_data, user_data):
     global bot_process
