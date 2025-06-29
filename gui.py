@@ -107,7 +107,14 @@ def main():
     overlay_status_proxy = OverlayStatusProxy()  # Only create here, in main process
     dpg.create_context()
     viewport_width, viewport_height = 900, 750  # You can set your preferred default size
-    dpg.create_viewport(title='CoC Builder Base Farming Bot', width=viewport_width, height=viewport_height, resizable=True)
+    dpg.create_viewport(
+        title='CoC Builder Base Farming Bot',
+        width=viewport_width,
+        height=viewport_height,
+        resizable=True,
+        small_icon="coc-icon.ico",
+        large_icon="coc-icon.ico"
+    )
 
     # Modern, neutral theme
     with dpg.theme() as global_theme:

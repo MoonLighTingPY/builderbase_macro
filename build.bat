@@ -8,8 +8,8 @@ REM Clean previous build
 if exist dist rmdir /s /q dist
 if exist build rmdir /s /q build
 
-REM Build with PyInstaller
-pyinstaller --onefile --noconsole --add-data "2k;2k" --add-data "fullhd;fullhd" --name "builderbase_farmer" main.py
+REM Build with PyInstaller (add icon)
+pyinstaller --onefile --noconsole --add-data "2k;2k" --add-data "fullhd;fullhd" --icon "coc-icon.ico" --name "builderbase_farmer" main.py
 
 REM Copy README and requirements.txt for distribution
 if exist dist (

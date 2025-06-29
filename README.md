@@ -50,7 +50,7 @@ pip install -r requirements.txt
 Build the executable (Windows):
 
 ```bash
-pyinstaller --onefile --noconsole --add-data "2k;2k" --add-data "fullhd;fullhd" --name "builderbase_farmer" main.py
+./build.bat
 ```
 
 Run the compiled `builderbase_farmer.exe` from the `dist/` folder.
