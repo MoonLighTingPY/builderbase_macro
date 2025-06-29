@@ -157,7 +157,7 @@ def deploy_troops(location, delay, one_troop_only=False):
 # Function to check the elixir cart and collect elixir if available
 # This function will check the elixir cart for different states (full, empty, not empty) and collect elixir if available
 def check_elixir():
-    send_overlay_status("show", "Checking elixir cart...", "purple")
+    send_overlay_status("show", "Opening elixir cart", "purple")
     # Define image pairs (cart image, collect button, cart confidence, button confidence)
     image_pairs = [
         ("elixir_cart_0", "collect_full", 0.55, 0.7),
@@ -187,6 +187,7 @@ def check_elixir():
     # Try to find and click the elixir cart and collect it
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
         if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
+            send_overlay_status("show", "Colleting elixir", "purple")
             time.sleep(0.3)
             if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"]):
                 time.sleep(0.3)
@@ -202,7 +203,7 @@ def check_elixir():
 
 # Add a dedicated function to check and dismiss star bonus popup
 def check_and_dismiss_star_bonus():
-    send_overlay_status("show", "Checking star bonus...", "yellow")
+    send_overlay_status("show", "Checking for star bonus", "yellow")
     """Check for star bonus popup and dismiss it if found"""
 
     # Wait for star bonus popup to appear and dismiss it
@@ -221,7 +222,7 @@ def check_and_dismiss_star_bonus():
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False):
-    send_overlay_status("show", "Deploying troops...", "orange")
+    send_overlay_status("show", "Trying to find a place", "orange")
     found_warplace = False # Flag to indicate if the warplace was found
 
     # Choose the test troop key based on whether it's the second battle
@@ -254,6 +255,7 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
     # If warplace images failed, try the fallback method
     if not found_warplace:
         print(f"Could not deploy troops using warplace images. Trying fallback method.")
+        send_overlay_status("show", "Trying random places", "orange")
         for _ in range(15):  # Try clicking N random places
             # Click random places in the top half of the screen
             random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
@@ -331,12 +333,12 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     print("Waiting for troops menu to appear...")
                     time.sleep(0.2)
 
-            send_overlay_status("show", "Deploying troops...", "orange")
             print("Deploying troops for the first village...")
             find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
             # Wait for the first battle to finish
             print("1st Battle in progress...")
+            send_overlay_status("show", "1st Battle in progress...", "orange")
             battle_finished = False
             while not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("First village battle is not finished yet.")
@@ -351,11 +353,11 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
             if battle_finished == False:
                 print("Battle advanced to the second village.")
                 time.sleep(1)
-                send_overlay_status("show", "Deploying troops...", "orange")
                 print("Deploying troops for the second village...")
                 find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True)
 
                 print("2nd Battle in progress...")
+                send_overlay_status("show", "2nd Battle in progress...", "orange")
                 while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                     print("Second village battle not finished yet.")
                     cast_hero_ability()
@@ -388,7 +390,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     print("Battle verify found, troops menu is ready.")
                     break
 
-            send_overlay_status("show", "Deploying troops...", "orange")
             print("Trophy dump: deploying one troop...")
             find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
 
