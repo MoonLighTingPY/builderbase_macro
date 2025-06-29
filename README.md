@@ -14,9 +14,9 @@
 ## ⚙️ Setup (Pre-requirements)
 
 1. Download Official [Clash of Clans for PC](https://play.google.com/pc-store/games/details?id=com.supercell.clashofclans&hl=en) from **Google Play Games**
-1. Set Clash of Clans language to: **English**
-1. Make sure the game is in **Fullscreen mode**
-1. Choose a classic scenery **(Forest)**
+2. Set Clash of Clans language to: **English**
+3. Make sure the game is in **Fullscreen mode**
+4. Choose a classic scenery **(Forest)**
 
 ---
 
