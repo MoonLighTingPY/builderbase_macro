@@ -106,7 +106,7 @@ def main():
     global overlay_status_proxy
     overlay_status_proxy = OverlayStatusProxy()  # Only create here, in main process
     dpg.create_context()
-    viewport_width, viewport_height = 900, 700  # You can set your preferred default size
+    viewport_width, viewport_height = 900, 750  # You can set your preferred default size
     dpg.create_viewport(title='CoC Builder Base Farming Bot', width=viewport_width, height=viewport_height, resizable=True)
 
     # Modern, neutral theme
@@ -131,24 +131,30 @@ def main():
             dpg.add_theme_style(dpg.mvStyleVar_WindowBorderSize, 2, category=dpg.mvThemeCat_Core)
 
     with dpg.font_registry():
+        # Make a larger font for the main title
+        title_font = dpg.add_font("C:/Windows/Fonts/segoeui.ttf", 32)
         default_font = dpg.add_font("C:/Windows/Fonts/segoeui.ttf", 16)
         header_font = dpg.add_font("C:/Windows/Fonts/segoeui.ttf", 24, default_font=True)
 
     with dpg.window(label="Builder Base Farming Bot", pos=(0, 0), width=viewport_width, height=viewport_height, no_collapse=True, no_resize=True, no_move=True, tag="main_window"):
         dpg.add_spacer(height=18)
         dpg.add_text("Clash of Clans Builder Base Bot")
-        dpg.bind_item_font(dpg.last_item(), header_font)
+        dpg.bind_item_font(dpg.last_item(), title_font)  # Use the bigger font for the main title
         dpg.add_spacer(height=10)
-        dpg.add_text("Automated farming for Builder Base. Minimal, modern UI.", color=(180, 180, 190))
+        big_info_text = dpg.add_text(
+            "Open Clash of Clans in the builder base,\n"
+            'then press "o" to start the bot, and "p" to stop.',
+            color=(255, 225, 255)
+        )
+        dpg.bind_item_font(big_info_text, header_font)
         dpg.add_spacer(height=8)
         dpg.add_separator()
         dpg.add_spacer(height=8)
-        with dpg.group(horizontal=True):
-            dpg.add_input_int(label="Elixir Check Interval", default_value=2, min_value=1, tag="elixir_freq", width=140)
+        with dpg.group():
+            dpg.add_input_int(label="Elixir Check Interval", default_value=2, min_value=1, tag="elixir_freq", width=180)
             dpg.add_input_float(label="Hero Ability Cooldown (s)", default_value=2.5, min_value=0, tag="ability_cd", width=180)
             dpg.add_checkbox(label="Trophy Dumping", tag="trophy_dumping")
         dpg.add_spacer(height=8)
-        dpg.add_text(f"Resolution: {screen_width}x{screen_height}   |   Assets: {'2K' if use_2k_images else 'FullHD'}", color=(120, 160, 200))
         dpg.add_spacer(height=8)
         dpg.add_separator()
         dpg.add_spacer(height=8)
