@@ -7,6 +7,7 @@ from main import farming_bot_main
 from resources import screen_width, screen_height, use_2k_images
 from overlay_status_proxy import OverlayStatusProxy
 from multiprocessing import Process
+multiprocessing.freeze_support()
 
 bot_process = None
 overlay_status_proxy = None  # Will be initialized in main()

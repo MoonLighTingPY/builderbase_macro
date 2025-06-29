@@ -1,13 +1,21 @@
 @echo off
-REM Build the Clash of Clans Builder Base Farming Bot
+setlocal
 
-REM Clean previous build/dist folders
-rmdir /s /q build
-rmdir /s /q dist
+REM Ensure we are in the script's directory
+cd /d "%~dp0"
 
-REM Run PyInstaller to build the executable
+REM Clean previous build
+if exist dist rmdir /s /q dist
+if exist build rmdir /s /q build
+
+REM Build with PyInstaller
 pyinstaller --onefile --noconsole --add-data "2k;2k" --add-data "fullhd;fullhd" --name "builderbase_farmer" main.py
 
-echo.
-echo Build complete! The executable is in the dist\ folder.
+REM Copy README and requirements.txt for distribution
+if exist dist (
+    copy README.md dist\
+    copy requirements.txt dist\
+)
+
+echo Build complete! Find builderbase_farmer.exe in the dist\ folder.
 pause
