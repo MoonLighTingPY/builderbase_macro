@@ -192,13 +192,10 @@ def check_elixir():
             if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"]):
                 time.sleep(0.3)
                 click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
-                send_overlay_status("hide")
                 return True  # Success
-            else:
-                send_overlay_status("hide")
+            else:            
                 print(f"Collect button {collect_img} not found for cart {cart_img}.")
                 return False
-    send_overlay_status("hide")
     return False  # Indicate that a restart is needed
 
 # Add a dedicated function to check and dismiss star bonus popup
@@ -211,11 +208,9 @@ def check_and_dismiss_star_bonus():
     time.sleep(1)
     time.sleep(1)   
     if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False):
-        send_overlay_status("hide")
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
         return True
-    send_overlay_status("hide")
     return False
 
 # Function to find the warplace and deploy troops
@@ -405,7 +400,6 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
                 print("Trophy dump: returned home.")
 
-        send_overlay_status("hide")
 if __name__ == "__main__":
     import gui
     gui.main()

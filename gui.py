@@ -54,7 +54,7 @@ def stop_bot_callback(sender, app_data, user_data):
     dpg.set_value("log", dpg.get_value("log") + "Bot stopped.\n")
     # Show overlay status after stopping the bot
     if overlay_status_proxy is not None:
-        overlay_status_proxy.show("Bot stopped", "red")
+        overlay_status_proxy.show("""Press "o" to start bot""", "green")
 
 def global_hotkey_listener():
     while True:
@@ -167,9 +167,11 @@ def main():
     dpg.bind_font(default_font)
     dpg.setup_dearpygui()
     dpg.show_viewport()
+    # --- FIX: Start overlay listener before sending status ---
+    start_overlay_listener(overlay_status_proxy.get_queue())
     # Show overlay status when GUI loads
     if overlay_status_proxy is not None:
-        overlay_status_proxy.show("""Press "O" to start bot""", "green")
+        overlay_status_proxy.show("""Press "o" to start bot""", "green")
     # Start global hotkey listener in a daemon thread
     threading.Thread(target=global_hotkey_listener, daemon=True).start()
     try:
