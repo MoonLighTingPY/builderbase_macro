@@ -228,6 +228,7 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
+            send_overlay_status("show", "Deployting troops", "orange")
             # First, test if the location is valid by deploying one troop
             pyautogui.moveTo(warplace_location)
             pyautogui.click(warplace_location)

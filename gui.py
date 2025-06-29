@@ -57,25 +57,32 @@ def stop_bot_callback(sender, app_data, user_data):
         overlay_status_proxy.show("""Press "o" to start bot""", "green")
 
 def global_hotkey_listener():
+    o_down = False
+    p_down = False
     while True:
-        keyboard.wait('o')
-        print("Global hotkey: O pressed (start bot)")
-        dpg.set_value("log", dpg.get_value("log") + "Global hotkey: O pressed (start bot)\n")
-        start_bot(
-            dpg.get_value("elixir_freq"),
-            dpg.get_value("ability_cd"),
-            dpg.get_value("trophy_dumping")
-        )
-        # Debounce: wait for key release
-        while keyboard.is_pressed('o'):
-            time.sleep(0.1)
+        if keyboard.is_pressed('o'):
+            if not o_down:
+                o_down = True
+                print("Global hotkey: O pressed (start bot)")
+                dpg.set_value("log", dpg.get_value("log") + "Global hotkey: O pressed (start bot)\n")
+                start_bot(
+                    dpg.get_value("elixir_freq"),
+                    dpg.get_value("ability_cd"),
+                    dpg.get_value("trophy_dumping")
+                )
+        else:
+            o_down = False
 
-        keyboard.wait('p')
-        print("Global hotkey: P pressed (stop bot)")
-        dpg.set_value("log", dpg.get_value("log") + "Global hotkey: P pressed (stop bot)\n")
-        stop_bot_callback(None, None, None)
-        while keyboard.is_pressed('p'):
-            time.sleep(0.1)
+        if keyboard.is_pressed('p'):
+            if not p_down:
+                p_down = True
+                print("Global hotkey: P pressed (stop bot)")
+                dpg.set_value("log", dpg.get_value("log") + "Global hotkey: P pressed (stop bot)\n")
+                stop_bot_callback(None, None, None)
+        else:
+            p_down = False
+
+        time.sleep(0.05)
 
 def cleanup_on_exit():
     global bot_process, overlay_process
