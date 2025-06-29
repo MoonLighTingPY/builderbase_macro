@@ -1,32 +1,26 @@
-import multiprocessing
 import pydirectinput
 import pyautogui
 import time
-import os
-import sys
 import cv2
 import numpy as np
 from mss import mss
-import tkinter as tk
-from tkinter import ttk, messagebox
-import keyboard
-import signal
-import atexit
 import random
-from overlay_status import update_overlay_status, hide_overlay_status, destroy_overlay_status
-import threading
+from resources import (
+    screen_width,
+    screen_height,
+    regions,
+    IMAGE_PATHS,
+)
 
-def resource_path(relative_path):
-    # Get absolute path to resource, works for dev and for PyInstaller
-    try:
-        base_path = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
-
-# Remove threading.Event and bot_thread
-bot_process = None
-keyboard_thread = None
+def send_overlay_status(msg_type, text=None, color=None):
+    if overlay_queue is None:
+        return
+    if msg_type == "show":
+        overlay_queue.put(("show", text, color))
+    elif msg_type == "hide":
+        overlay_queue.put(("hide",))
+    elif msg_type == "destroy":
+        overlay_queue.put(("destroy",))
 
 # Initialize mss for screen capture
 sct = mss()
@@ -35,7 +29,6 @@ sct = mss()
 pyautogui.PAUSE = 0
 pydirectinput.PAUSE = 0
 # Get screen size
-screen_width, screen_height = pyautogui.size()
 
 error_last_print_time = {} # Track last error message time for each image
 ERROR_COOLDOWN = 1  # Time in seconds before printing the same error message again
@@ -51,58 +44,6 @@ warplace_attempts = 8  # Number of attempts to find the warplace before giving u
 
 trophy_dumping_mode = False  # Set to True if you want to dump trophies instead of farming
 
-# Determine if we should use high resolution images
-use_2k_images = screen_width > 1920 or screen_height > 1080
-image_dir = "2k/" if use_2k_images else "fullhd/"
-
-print(f"Screen resolution: {screen_width}x{screen_height}, using {'2K' if use_2k_images else 'standard'} images")
-
-# Define screen regions. Used so we don't have to search the whole screen for images
-regions = {
-    "top_right": (screen_width // 2, 0, screen_width, screen_height // 2),
-    "bottom_left": (0, screen_height // 2, screen_width // 2, screen_height),
-    "bottom_right": (screen_width // 2, screen_height // 2, screen_width, screen_height),
-    "whole_screen": (0, 0, screen_width, screen_height),
-    "top_half": (0, 0, screen_width, screen_height // 2),
-    "bottom_half": (0, screen_height // 2, screen_width, screen_height)
-}
-
-# Paths to image assets
-IMAGE_PATHS = {
-    # Elixir Cart Images
-    "elixir_cart_0": resource_path(f"{image_dir}elixir_cart/elixir_cart_0.png"),
-    "elixir_cart_1": resource_path(f"{image_dir}elixir_cart/elixir_cart_1.png"),
-    "elixir_cart_2": resource_path(f"{image_dir}elixir_cart/elixir_cart_2.png"),
-    "elixir_cart_3": resource_path(f"{image_dir}elixir_cart/elixir_cart_3.png"),
-    "elixir_cart_4": resource_path(f"{image_dir}elixir_cart/elixir_cart_4.png"),
-    "elixir_cart_6": resource_path(f"{image_dir}elixir_cart/elixir_cart_6.png"),
-    "elixir_cart_7": resource_path(f"{image_dir}elixir_cart/elixir_cart_7.png"),
-    
-    # Button Images
-    "collect_full": resource_path(f"{image_dir}buttons/collect_full.png"),
-    "collect_empty": resource_path(f"{image_dir}buttons/collect_empty.png"),
-    "close_elixir": resource_path(f"{image_dir}buttons/close_elixir.png"),
-    "battle_open": resource_path(f"{image_dir}buttons/attack.png"),
-    "battle_start": resource_path(f"{image_dir}buttons/find_now.png"),
-    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
-    "return_home": resource_path(f"{image_dir}buttons/return_home.png"),
-    "surrender": resource_path(f"{image_dir}buttons/surrender.png"),
-    "end_battle": resource_path(f"{image_dir}buttons/end_battle.png"),
-    "confirm_surrender": resource_path(f"{image_dir}buttons/confirm_surrender.png"),
-    "okay_starbonus": resource_path(f"{image_dir}buttons/okay_starbonus.png"),
-
-    # Other Images
-    "start_app": resource_path(f"{image_dir}start_app.png"),
-    "battle_verify": resource_path(f"{image_dir}battle_verify.png"),
-    "attack_cooldown": resource_path(f"{image_dir}attack_cooldown.png"),
-    "ends_in": resource_path(f"{image_dir}ends_in.png"),
-
-
-    # Places to deploy troops
-    "warplace": [resource_path(os.path.join(image_dir, "warplace", img)) for img in os.listdir(resource_path(os.path.join(image_dir, "warplace"))) if img.endswith(".png")]
-}
-
-
 # Function to click on an image on the screen
 # This function will keep trying to find the image until it is found or the loop is broken
 # It will return True if the image is found and clicked, otherwise it will return False
@@ -113,13 +54,13 @@ IMAGE_PATHS = {
 # parsemode, boolean, defines whether to return the coordinates of the image instead of clicking it
 # loop, boolean, defines whether to keep trying to find the image until it is found or no
 def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True, scales=[1.0]):
-    if loop:
-        if click_image_core(image_path, region, confidence, parsemode, scales):
-            return True
-    else:
-        return click_image_core(image_path, region, confidence, parsemode, scales)
+    while True:
+        result = click_image_core(image_path, region, confidence, parsemode, scales)
+        if result:
+            return result
+        if not loop:
+            return result
         
-
 def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0, 2.0, 1.75, 1.5, 1.25, 0.75, 0.5]): 
     try:
         # Create a thread-local instance of mss for thread safety
@@ -196,7 +137,6 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
 def deploy_troops(location, delay, one_troop_only=False):
     pyautogui.moveTo(location)
     pyautogui.click(location)
-    
     if not one_troop_only:
         # Deploy troops and cast abilities using keys 1-8 and Q
         troop_keys = ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]
@@ -217,6 +157,7 @@ def deploy_troops(location, delay, one_troop_only=False):
 # Function to check the elixir cart and collect elixir if available
 # This function will check the elixir cart for different states (full, empty, not empty) and collect elixir if available
 def check_elixir():
+    send_overlay_status("show", "Opening elixir cart", "purple")
     # Define image pairs (cart image, collect button, cart confidence, button confidence)
     image_pairs = [
         ("elixir_cart_0", "collect_full", 0.55, 0.7),
@@ -246,40 +187,37 @@ def check_elixir():
     # Try to find and click the elixir cart and collect it
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
         if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
+            send_overlay_status("show", "Colleting elixir", "purple")
             time.sleep(0.3)
             if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"]):
                 time.sleep(0.3)
                 click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
                 return True  # Success
-            else:
+            else:            
                 print(f"Collect button {collect_img} not found for cart {cart_img}.")
                 return False
-                
     return False  # Indicate that a restart is needed
 
 # Add a dedicated function to check and dismiss star bonus popup
 def check_and_dismiss_star_bonus():
+    send_overlay_status("show", "Checking for star bonus", "yellow")
     """Check for star bonus popup and dismiss it if found"""
 
     # Wait for star bonus popup to appear and dismiss it
-    # update_overlay_status("Waiting for starbonus (0s.)", color="yellow", root=root)
     print("Waiting for star bonus popup...")
     time.sleep(1)
-    # update_overlay_status("Waiting for starbonus (1s.)", color="yellow", root=root)
     time.sleep(1)   
-    # update_overlay_status("Waiting for starbonus (2s.)", color="yellow", root=root)
-
     if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False):
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
         return True
     return False
 
-
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False):
+    send_overlay_status("show", "Trying to find a place", "orange")
     found_warplace = False # Flag to indicate if the warplace was found
 
     # Choose the test troop key based on whether it's the second battle
@@ -290,6 +228,7 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
         warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
+            send_overlay_status("show", "Deployting troops", "orange")
             # First, test if the location is valid by deploying one troop
             pyautogui.moveTo(warplace_location)
             pyautogui.click(warplace_location)
@@ -305,13 +244,14 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
                 if not one_troop_only:
                     deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=False)
                 found_warplace = True
-                return  
+                return
             else:
                 print(f"Test troop failed to deploy at {warplace_location}. Trying next warplace image.")
 
     # If warplace images failed, try the fallback method
     if not found_warplace:
         print(f"Could not deploy troops using warplace images. Trying fallback method.")
+        send_overlay_status("show", "Trying random places", "orange")
         for _ in range(15):  # Try clicking N random places
             # Click random places in the top half of the screen
             random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
@@ -348,52 +288,13 @@ def cast_hero_ability():
         pydirectinput.press("q")
         last_ability_time = current_time
 
-# Function that runs in a separate thread to monitor pause bot key press 
-def keyboard_listener():
-    try:
-        keyboard.wait('p')  # Wait for the 'p' key to be pressed
-        print("P key pressed, stopping bot...")
-        if 'root' in globals():
-            root.after(0, stop_bot)
-        else:
-            stop_bot()
-    except Exception as e:
-        print(f"Keyboard listener stopped: {e}")
-
-# Function to handle safe exit
-def safe_exit():
-    print("Performing safe exit...")
-    destroy_overlay_status()
-    if bot_process is not None and bot_process.is_alive():
-        try:
-            bot_process.terminate()
-            bot_process.join(timeout=1.0)
-        except:
-            pass
-
-
-# Flag to control the bot running state
-running = False
-# Global thread reference
-bot_thread = None
-
-atexit.register(safe_exit)
-signal.signal(signal.SIGINT, lambda sig, frame: safe_exit())
-signal.signal(signal.SIGTERM, lambda sig, frame: safe_exit())
-
-def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images):
-    global elixir_check_counter, running
-    # DO NOT use root or update_overlay_status here!
-    # Only bot logic, no UI/overlay
-    # Remove all update_overlay_status(..., root=root) and similar calls
-    # If you want to log, use print() or write to a file
-
-    # Example:
+def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images, overlay_queue_arg=None):
+    global elixir_check_counter, overlay_queue
+    overlay_queue = overlay_queue_arg
     print("Bot process started")
-    # ...rest of your farming logic...
-
-    if not trophy_dumping_mode:
-        try:
+    while True:
+        send_overlay_status("show", "Waiting for Builder Base...", "yellow")
+        if not trophy_dumping_mode:
             # Check if the game is open in the builder base by looking for the attack button
             print("Waiting for Builder Base...")
             if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
@@ -409,7 +310,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 check_elixir()
 
             # Press the attack button to open the battle menu
-            print("Starting battle")
+            send_overlay_status("show", "Starting battle...", "orange")
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
 
@@ -418,24 +319,24 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
 
             # Wait for troops menu to appear before deploying troops
             print("Waiting for battle")
-            while running:
+            while True:
                 if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                     print("Battle verify found, troops menu is ready.")
+                    
                     time.sleep(0.5)
                     break
                 else:
                     print("Waiting for troops menu to appear...")
                     time.sleep(0.2)
-                if not running:
-                    return
 
             print("Deploying troops for the first village...")
             find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
             # Wait for the first battle to finish
             print("1st Battle in progress...")
+            send_overlay_status("show", "1st Battle in progress...", "orange")
             battle_finished = False
-            while running and not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
+            while not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("First village battle is not finished yet.")
                 if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                     battle_finished = True
@@ -444,31 +345,24 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     check_and_dismiss_star_bonus()
                     break
                 cast_hero_ability()
-                if not running:
-                    return
 
-            if battle_finished == False and running:
+            if battle_finished == False:
                 print("Battle advanced to the second village.")
                 time.sleep(1)
                 print("Deploying troops for the second village...")
                 find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True)
 
                 print("2nd Battle in progress...")
-                while running and not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
+                send_overlay_status("show", "2nd Battle in progress...", "orange")
+                while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                     print("Second village battle not finished yet.")
                     cast_hero_ability()
-                    if not running:
-                        return
 
                 print("Battle finished, returning home...")
+                send_overlay_status("show", "Returning home...", "yellow")
+                time.sleep(1)
 
-        except Exception as e:
-            print(f"Error in farming bot: {e}")
-            if not running:
-                return
-            time.sleep(2)
-    elif trophy_dumping_mode:
-        try:
+        elif trophy_dumping_mode:
             print("Trophy dump: waiting for Builder Base...")
             if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
                 print("Game is open in the builder base, starting bot...")
@@ -479,24 +373,23 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 print("Checking for elixir this iteration")
                 check_elixir()
 
+            send_overlay_status("show", "Starting battle...", "orange")
             print("Trophy dump: Starting battle")
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
 
             click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
-
             print("Trophy dump: Waiting for battle...")
-            while running:
+            while True:
                 if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                     print("Battle verify found, troops menu is ready.")
                     break
-                if not running:
-                    return
 
             print("Trophy dump: deploying one troop...")
             find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
 
+            send_overlay_status("show", "Surrendering...", "red")
             print("Trophy dump: surrendering")
             if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8):
                 print("Surrendering the first village battle to dump trophies.")
@@ -507,203 +400,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 time.sleep(0.3)
                 click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
                 print("Trophy dump: returned home.")
-        except Exception as e:
-            print(f"Error in farming bot: {e}")
-            if not running:
-                return
-            time.sleep(2)
-
-def start_bot():
-    global bot_process, keyboard_thread, elixir_check_frequency, elixir_check_counter, ability_cooldown, trophy_dumping_mode
-
-    elixir_check_counter = 0  # Reset the elixir check counter when starting the bot
-
-    # Update elixir check frequency from UI
-    try:
-        elixir_check_frequency = int(elixir_freq_entry.get())
-        if elixir_check_frequency <= 0:
-            messagebox.showerror("Error", "Elixir check frequency must be greater than 0")
-            return
-    except ValueError:
-        messagebox.showerror("Error", "Elixir check frequency must be a number")
-        return
-
-    # Update delays and cooldown from UI
-    try:
-        ability_cooldown = float(ability_cd_entry.get())
-        if troop_deploy_delay < 0 or ability_cooldown < 0:
-            raise ValueError
-    except ValueError:
-        messagebox.showerror("Error", "Delays and cooldown must be non-negative numbers")
-        return
-    try:
-        trophy_dumping_mode = bool(trophy_dumping_var.get())
-    except ValueError:
-        messagebox.showerror("Error", "Trophy dumping mode must be a boolean value")
-        return
-
-    if bot_process is None or not bot_process.is_alive():
-        start_button.config(text="Stop Bot", bg="#ff6b6b")
-        status_label.config(text="Status: Running", foreground="green")
-        log_text.insert(tk.END, "Bot started...\n")
-        log_text.insert(tk.END, f"Elixir check frequency set to every {elixir_check_frequency} battles\n")
-        log_text.insert(tk.END, "Press 'P' key to stop the bot at any time\n")
-        log_text.see(tk.END)
-
-        # Start the bot process (no Tkinter/overlay in the process)
-        bot_process = multiprocessing.Process(
-            target=farming_bot_main,
-            args=(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images)
-        )
-        bot_process.start()
-
-        # Keyboard listener remains in main process/thread
-        keyboard_thread = threading.Thread(target=keyboard_listener)
-        keyboard_thread.daemon = True
-        keyboard_thread.start()
-    else:
-        stop_bot()
-
-def stop_bot():
-    global bot_process, keyboard_thread
-
-    if bot_process is not None and bot_process.is_alive():
-        print("Stopping bot process instantly...")
-        update_overlay_status("Bot ready!", color="green", root=root)
-        start_button.config(state="disabled")
-        root.after(0, lambda: status_label.config(text="Status: Stopping...", foreground="orange"))
-        root.after(0, lambda: log_text.insert(tk.END, "Stopping bot, please wait...\n"))
-        root.after(0, lambda: log_text.see(tk.END))
-
-        bot_process.terminate()
-        bot_process.join(timeout=2.0)
-        if bot_process.is_alive():
-            print("Warning: Bot process is still running after terminate()")
-        bot_process = None
-        keyboard_thread = None
-
-        root.after(0, lambda: start_button.config(text="Start Bot", bg="#4CAF50", state="normal"))
-        root.after(0, lambda: status_label.config(text="Status: Stopped", foreground="red"))
-        root.after(0, lambda: log_text.insert(tk.END, "Bot stopped.\n"))
-        root.after(0, lambda: log_text.see(tk.END))
-
-def on_closing():
-    stop_bot()
-    destroy_overlay_status()
-    root.destroy()
 
 if __name__ == "__main__":
-    # Create the main UI window
-    root = tk.Tk()
-    update_overlay_status("Bot ready!", color="green", root=root)
-    root.title("CoC Builder Base Farming Bot")
-    root.geometry("600x500")
-    root.protocol("WM_DELETE_WINDOW", on_closing)
-
-    # Configure the grid
-    root.grid_columnconfigure(0, weight=1)
-    root.grid_rowconfigure(3, weight=1)
-
-    # Create a header frame
-    header_frame = ttk.Frame(root, padding="10")
-    header_frame.grid(row=0, column=0, sticky="ew")
-
-    # Add a title
-    title_label = ttk.Label(header_frame, text="Clash of Clans Builder Base Farming Bot", font=("Helvetica", 16, "bold"))
-    title_label.pack(pady=10)
-
-    # Create a settings frame
-    settings_frame = ttk.LabelFrame(root, text="Settings", padding="10")
-    settings_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
-
-    # Add elixir frequency setting (row 0)
-    elixir_freq_label = ttk.Label(settings_frame, text="Check Elixir Every N Battles:")
-    elixir_freq_label.grid(row=0, column=0, sticky="w", padx=5, pady=5)
-
-    elixir_freq_entry = ttk.Entry(settings_frame, width=5)
-    elixir_freq_entry.grid(row=0, column=1, sticky="w", padx=5, pady=5)
-    elixir_freq_entry.insert(0, str(elixir_check_frequency))
-
-    # Resolution info
-    resolution_label = ttk.Label(settings_frame, text=f"Screen Resolution: {screen_width}x{screen_height}, Using {'2K' if use_2k_images else 'FullHD'} Images")
-    resolution_label.grid(row=0, column=2, sticky="e", padx=5, pady=5)
-
-
-    # Add hero ability cooldown setting (row 3)
-    ability_cd_label = ttk.Label(settings_frame, text="Hero Ability Cooldown (s):")
-    ability_cd_label.grid(row=3, column=0, sticky="w", padx=5, pady=5)
-    ability_cd_entry = ttk.Entry(settings_frame, width=5)
-    ability_cd_entry.grid(row=3, column=1, sticky="w", padx=5, pady=5)
-    ability_cd_entry.insert(0, str(ability_cooldown))
-
-    # Add trophy dumping mode setting (row 4)
-    # Create a BooleanVar to store the checkbox state
-    trophy_dumping_var = tk.BooleanVar(value=trophy_dumping_mode)
-
-    trophy_dumping_mode_label = ttk.Label(settings_frame, text="Trophy Dumping Mode:")
-    trophy_dumping_mode_label.grid(row=4, column=0, sticky="w", padx=5, pady=5)
-
-    trophy_dumping_mode_cb = ttk.Checkbutton(settings_frame, variable=trophy_dumping_var)
-    trophy_dumping_mode_cb.grid(row=4, column=1, sticky="w", padx=5, pady=5)
-
-
-
-
-    # Create a control frame
-    control_frame = ttk.Frame(root, padding="10")
-    control_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
-
-    # Add start button with custom style
-    start_button = tk.Button(
-        control_frame, 
-        text="Start Bot", 
-        font=("Helvetica", 12, "bold"),
-        bg="#4CAF50", 
-        fg="white",
-        activebackground="#45a049",
-        activeforeground="white",
-        width=15,
-        height=2,
-        command=start_bot
-    )
-    start_button.pack(side="left", padx=10)
-
-    # Add status label
-    status_label = ttk.Label(control_frame, text="Status: Not Running", font=("Helvetica", 10), foreground="red")
-    status_label.pack(side="left", padx=20)
-
-    # Create a log frame
-    log_frame = ttk.LabelFrame(root, text="Bot Log", padding="10")
-    log_frame.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
-
-    # Create a scrollable text widget for logs
-    log_text = tk.Text(log_frame, height=10, width=70, wrap=tk.WORD)
-    log_text.pack(side="left", fill="both", expand=True)
-
-    # Add a scrollbar to the log text
-    log_scroll = ttk.Scrollbar(log_frame, command=log_text.yview)
-    log_scroll.pack(side="right", fill="y")
-    log_text.config(yscrollcommand=log_scroll.set)
-
-
-    # Add some initial log messages
-    log_text.insert(tk.END, "Bot initialized and ready to start...\n")
-    log_text.insert(tk.END, "Please make sure Clash of Clans is running in fullscreen mode\n")
-    log_text.insert(tk.END, "and you are in the Builder Base before starting the bot.\n\n")
-    log_text.insert(tk.END, "⚠️ DISCLAIMER: Using automation tools may violate Supercell's Terms of Service.\n")
-    log_text.insert(tk.END, "This tool is for educational purposes only. Use at your own risk.\n")
-    log_text.see(tk.END)
-
-    # Add a footer with instructions
-    footer_frame = ttk.Frame(root, padding="10")
-    footer_frame.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
-
-    instructions_label = ttk.Label(
-        footer_frame, 
-        text="Instructions: Start the bot, then switch back to Clash of Clans within 3 seconds.",
-        font=("Helvetica", 9, "italic")
-    )
-    instructions_label.pack()
-
-    # Start the UI main loop
-    root.mainloop()
+    import gui
+    gui.main()

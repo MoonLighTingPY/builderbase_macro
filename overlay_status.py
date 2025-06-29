@@ -1,7 +1,7 @@
-import tkinter as tk
-import threading
+from PyQt5 import QtWidgets, QtCore, QtGui
+import sys
 
-class OverlayStatus:
+class OverlayStatus(QtWidgets.QWidget):
     COLORS = {
         "yellow": "#FFFF00",
         "orange": "#FFA500",
@@ -10,93 +10,127 @@ class OverlayStatus:
         "purple": "#CA00CA",
         "default": "#222222"
     }
-    ALPHA = 0.75
+    ALPHA = 0.9
 
-    def __init__(self, root, width=220, height=38):
-        self.overlay = tk.Toplevel(root)
-        self.overlay.overrideredirect(True)
-        self.overlay.attributes("-topmost", True)
-        self.overlay.attributes("-alpha", self.ALPHA)
-        self.overlay.configure(bg=self.COLORS["default"])
-        self.width = width
-        self.height = height
-        self._set_position()
-        self.overlay.withdraw()
-        self.lock = threading.Lock()
-
-        # Use Canvas for text with outline
-        self.canvas = tk.Canvas(self.overlay, width=self.width, height=self.height, highlightthickness=0, bg=self.COLORS["default"])
-        self.canvas.pack(fill="both", expand=True)
-        self.text_id = None
-        self.current_bg = self.COLORS["default"]
+    def __init__(self, width=220, height=38):
+        super().__init__(
+            None,
+            QtCore.Qt.WindowStaysOnTopHint |
+            QtCore.Qt.FramelessWindowHint |
+            QtCore.Qt.BypassWindowManagerHint |
+            QtCore.Qt.Tool
+        )
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        self.setWindowFlag(QtCore.Qt.WindowDoesNotAcceptFocus)
+        self.setWindowFlag(QtCore.Qt.WindowTransparentForInput, True)  # Click-through
+        self.resize(width, height)
+        self.text = ""
+        self.color = "default"
+        self.hide()
 
     def _set_position(self):
-        self.overlay.update_idletasks()
-        screen_width = self.overlay.winfo_screenwidth()
-        screen_height = self.overlay.winfo_screenheight()
-        x = screen_width - self.width - 5
-        y = screen_height - self.height - 5
-        self.overlay.geometry(f"{self.width}x{self.height}+{x}+{y}")
-
-    def _draw_text_with_outline(self, text, fg, bg):
-        self.canvas.delete("all")
-        font = ("Segoe UI", 11, "bold")
-        x = self.width // 2
-        y = self.height // 2
-        outline_color = "black"
-        # Draw outline by drawing text in 8 directions
-        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (1,1), (-1,1), (1,-1)]:
-            self.canvas.create_text(x+dx, y+dy, text=text, font=font, fill=outline_color)
-        # Draw main text
-        self.canvas.create_text(x, y, text=text, font=font, fill=fg)
+        screen = QtWidgets.QApplication.primaryScreen().geometry()
+        x = screen.width() - self.width() - 10  # 10 pixels from right
+        y = screen.height() - self.height() - 50  # 10 pixels from bottom
+        self.move(x, y)
 
     def show(self, text, color="default"):
-        with self.lock:
-            bg = self.COLORS.get(color, self.COLORS["default"])
-            fg = "white" if color != "yellow" else "#222222"  # Use dark text for yellow bg
-            self.current_bg = bg
-            self.overlay.configure(bg=bg)
-            self.canvas.configure(bg=bg)
-            self._set_position()
-            self._draw_text_with_outline(text, fg, bg)
-            self.overlay.deiconify()
-            self.overlay.attributes("-topmost", True)
-            # Return focus to the main window to prevent minimizing
-            if hasattr(self.overlay, 'master') and self.overlay.master is not None:
-                try:
-                    self.overlay.master.focus_force()
-                except Exception:
-                    pass
+        self.text = text
+        self.color = color
+        self._set_position()
+        super().show()
+        self.update()
 
     def hide(self):
-        with self.lock:
-            self.overlay.withdraw()
+        super().hide()
 
     def destroy(self):
-        with self.lock:
-            try:
-                self.overlay.destroy()
-            except Exception:
-                pass
+        self.close()
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        color = QtGui.QColor(self.COLORS.get(self.color, self.COLORS["default"]))
+        color.setAlphaF(self.ALPHA)
+        painter.setBrush(color)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawRoundedRect(self.rect(), 10, 10)
+
+        # Calculate luminance to determine if background is bright
+        r, g, b = color.red(), color.green(), color.blue()
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+
+        font = painter.font()
+        font.setPointSize(14)
+        painter.setFont(font)
+
+        rect = self.rect()
+        text = self.text
+
+        if luminance > 100:
+            # Bright background: draw black outline, then white text
+            painter.setPen(QtGui.QColor("#000"))
+            # Draw text outline by offsetting in 8 directions
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx != 0 or dy != 0:
+                        painter.drawText(rect.translated(dx, dy), QtCore.Qt.AlignCenter, text)
+            painter.setPen(QtGui.QColor("#fff"))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, text)
+        else:
+            # Dark background: just white text
+            painter.setPen(QtGui.QColor("#fff"))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, text)
 
 _overlay_instance = None
+_overlay_app = None
 
-def get_overlay(root=None):
-    global _overlay_instance
+def get_overlay():
+    global _overlay_instance, _overlay_app
     if _overlay_instance is None:
-        if root is None:
-            raise RuntimeError("OverlayStatus requires a Tk root window")
-        _overlay_instance = OverlayStatus(root)
+        _overlay_app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+        _overlay_instance = OverlayStatus()
     return _overlay_instance
 
 def update_overlay_status(text, color="default", root=None):
-    get_overlay(root).show(text, color)
+    overlay = get_overlay()
+    overlay.show(text, color)
 
-def hide_overlay_status(root=None):
-    get_overlay(root).hide()
+def hide_overlay_status():
+    overlay = get_overlay()
+    overlay.hide()
 
 def destroy_overlay_status():
-    global _overlay_instance
-    if _overlay_instance is not None:
-        _overlay_instance.destroy()
-        _overlay_instance = None
+    overlay = get_overlay()
+    overlay.destroy()
+
+def overlay_status_listener(queue):
+    """
+    Listens for overlay status commands from the queue and updates the overlay accordingly.
+    This function must be called from the main thread of the main process.
+    It will start the Qt event loop if not already running.
+    """
+    overlay = get_overlay()
+
+    def process_queue():
+        while not queue.empty():
+            try:
+                msg = queue.get_nowait()
+                if not msg:
+                    continue
+                cmd = msg[0]
+                if cmd == "show":
+                    text = msg[1] if len(msg) > 1 else ""
+                    color = msg[2] if len(msg) > 2 else "default"
+                    overlay.show(text, color)
+                elif cmd == "hide":
+                    overlay.hide()
+                elif cmd == "destroy":
+                    overlay.destroy()
+            except Exception as e:
+                print(f"OverlayStatusListener error: {e}")
+
+    timer = QtCore.QTimer()
+    timer.timeout.connect(process_queue)
+    timer.start(100)  # Check the queue every 100ms
+
+    _overlay_app.exec_()
