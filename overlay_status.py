@@ -10,10 +10,16 @@ class OverlayStatus(QtWidgets.QWidget):
         "purple": "#CA00CA",
         "default": "#222222"
     }
-    ALPHA = 0.75
+    ALPHA = 0.9
 
     def __init__(self, width=220, height=38):
-        super().__init__(None, QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool)
+        super().__init__(
+            None,
+            QtCore.Qt.WindowStaysOnTopHint |
+            QtCore.Qt.FramelessWindowHint |
+            QtCore.Qt.BypassWindowManagerHint |
+            QtCore.Qt.Tool
+        )
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.setWindowFlag(QtCore.Qt.WindowDoesNotAcceptFocus)
         self.setWindowFlag(QtCore.Qt.WindowTransparentForInput, True)  # Click-through
@@ -25,7 +31,7 @@ class OverlayStatus(QtWidgets.QWidget):
     def _set_position(self):
         screen = QtWidgets.QApplication.primaryScreen().geometry()
         x = screen.width() - self.width() - 10  # 10 pixels from right
-        y = screen.height() - self.height() - 10  # 10 pixels from bottom
+        y = screen.height() - self.height() - 50  # 10 pixels from bottom
         self.move(x, y)
 
     def show(self, text, color="default"):
