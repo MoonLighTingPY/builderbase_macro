@@ -1,6 +1,8 @@
 import dearpygui.dearpygui as dpg
 import multiprocessing
 import time
+import threading
+import keyboard  # Global hotkey support
 from main import farming_bot_main, use_2k_images, screen_width, screen_height
 
 bot_process = None
@@ -36,6 +38,27 @@ def stop_bot_callback(sender, app_data, user_data):
         bot_process = None
     dpg.set_value("status_text", "Stopped")
     dpg.set_value("log", dpg.get_value("log") + "Bot stopped.\n")
+
+def global_hotkey_listener():
+    while True:
+        keyboard.wait('o')
+        print("Global hotkey: O pressed (start bot)")
+        dpg.set_value("log", dpg.get_value("log") + "Global hotkey: O pressed (start bot)\n")
+        start_bot(
+            dpg.get_value("elixir_freq"),
+            dpg.get_value("ability_cd"),
+            dpg.get_value("trophy_dumping")
+        )
+        # Debounce: wait for key release
+        while keyboard.is_pressed('o'):
+            time.sleep(0.1)
+
+        keyboard.wait('p')
+        print("Global hotkey: P pressed (stop bot)")
+        dpg.set_value("log", dpg.get_value("log") + "Global hotkey: P pressed (stop bot)\n")
+        stop_bot_callback(None, None, None)
+        while keyboard.is_pressed('p'):
+            time.sleep(0.1)
 
 def main():
     dpg.create_context()
@@ -98,6 +121,8 @@ def main():
     dpg.bind_font(default_font)
     dpg.setup_dearpygui()
     dpg.show_viewport()
+    # Start global hotkey listener in a daemon thread
+    threading.Thread(target=global_hotkey_listener, daemon=True).start()
     dpg.start_dearpygui()
     dpg.destroy_context()
 
