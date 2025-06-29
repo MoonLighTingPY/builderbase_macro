@@ -60,11 +60,12 @@ Run the compiled `builderbase_farmer.exe` from the `dist/` folder.
 ## ▶️ Usage Guide:
 
 1. Start `builderbase_farmer.exe`
-2. Set how many battles to wait before collecting elixir (default: 2)
-3. Press `Start Bot` in the UI
-4. Open Clash of Clans
-5. Navigate to the Builder Base
-6. Press `P` to pause (wait for a few second before interacting for bot to finish current operations)
+2. Set how many battles to wait before collecting elixir and a delay in seconds for casting the hero ability
+3. Enable trophy dumping mode if you want
+5. Open Clash of Clans in the Builder Base
+6. Press `O` to stop the bot
+7. Let it farm
+8. Press `P` to stop the bot
 
 ---
 
