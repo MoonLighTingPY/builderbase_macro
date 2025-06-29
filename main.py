@@ -1,5 +1,3 @@
-from PyQt5 import QtWidgets
-import sys
 import pydirectinput
 import pyautogui
 import time
@@ -13,10 +11,16 @@ from resources import (
     regions,
     IMAGE_PATHS,
 )
-from overlay_status import update_overlay_status, hide_overlay_status
 
-app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-update_overlay_status("Starting...", "orange")
+def send_overlay_status(msg_type, text=None, color=None):
+    if overlay_queue is None:
+        return
+    if msg_type == "show":
+        overlay_queue.put(("show", text, color))
+    elif msg_type == "hide":
+        overlay_queue.put(("hide",))
+    elif msg_type == "destroy":
+        overlay_queue.put(("destroy",))
 
 # Initialize mss for screen capture
 sct = mss()
@@ -153,6 +157,7 @@ def deploy_troops(location, delay, one_troop_only=False):
 # Function to check the elixir cart and collect elixir if available
 # This function will check the elixir cart for different states (full, empty, not empty) and collect elixir if available
 def check_elixir():
+    send_overlay_status("show", "Checking elixir cart...", "purple")
     # Define image pairs (cart image, collect button, cart confidence, button confidence)
     image_pairs = [
         ("elixir_cart_0", "collect_full", 0.55, 0.7),
@@ -186,15 +191,18 @@ def check_elixir():
             if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"]):
                 time.sleep(0.3)
                 click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
+                send_overlay_status("hide")
                 return True  # Success
             else:
+                send_overlay_status("hide")
                 print(f"Collect button {collect_img} not found for cart {cart_img}.")
                 return False
-                
+    send_overlay_status("hide")
     return False  # Indicate that a restart is needed
 
 # Add a dedicated function to check and dismiss star bonus popup
 def check_and_dismiss_star_bonus():
+    send_overlay_status("show", "Checking star bonus...", "yellow")
     """Check for star bonus popup and dismiss it if found"""
 
     # Wait for star bonus popup to appear and dismiss it
@@ -202,15 +210,18 @@ def check_and_dismiss_star_bonus():
     time.sleep(1)
     time.sleep(1)   
     if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False):
+        send_overlay_status("hide")
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
         return True
+    send_overlay_status("hide")
     return False
 
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
 def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False):
+    send_overlay_status("show", "Deploying troops...", "orange")
     found_warplace = False # Flag to indicate if the warplace was found
 
     # Choose the test troop key based on whether it's the second battle
@@ -236,7 +247,7 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
                 if not one_troop_only:
                     deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=False)
                 found_warplace = True
-                return  
+                return
             else:
                 print(f"Test troop failed to deploy at {warplace_location}. Trying next warplace image.")
 
@@ -279,10 +290,12 @@ def cast_hero_ability():
         pydirectinput.press("q")
         last_ability_time = current_time
 
-def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images):
-    global elixir_check_counter
+def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images, overlay_queue_arg=None):
+    global elixir_check_counter, overlay_queue
+    overlay_queue = overlay_queue_arg
     print("Bot process started")
     while True:
+        send_overlay_status("show", "Waiting for Builder Base...", "yellow")
         if not trophy_dumping_mode:
             # Check if the game is open in the builder base by looking for the attack button
             print("Waiting for Builder Base...")
@@ -299,7 +312,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 check_elixir()
 
             # Press the attack button to open the battle menu
-            print("Starting battle")
+            send_overlay_status("show", "Starting battle...", "orange")
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
 
@@ -318,6 +331,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     print("Waiting for troops menu to appear...")
                     time.sleep(0.2)
 
+            send_overlay_status("show", "Deploying troops...", "orange")
             print("Deploying troops for the first village...")
             find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
@@ -337,6 +351,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
             if battle_finished == False:
                 print("Battle advanced to the second village.")
                 time.sleep(1)
+                send_overlay_status("show", "Deploying troops...", "orange")
                 print("Deploying troops for the second village...")
                 find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True)
 
@@ -346,6 +361,8 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     cast_hero_ability()
 
                 print("Battle finished, returning home...")
+                send_overlay_status("show", "Returning home...", "yellow")
+                time.sleep(1)
 
         elif trophy_dumping_mode:
             print("Trophy dump: waiting for Builder Base...")
@@ -358,6 +375,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 print("Checking for elixir this iteration")
                 check_elixir()
 
+            send_overlay_status("show", "Starting battle...", "orange")
             print("Trophy dump: Starting battle")
             click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
@@ -370,9 +388,11 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                     print("Battle verify found, troops menu is ready.")
                     break
 
+            send_overlay_status("show", "Deploying troops...", "orange")
             print("Trophy dump: deploying one troop...")
             find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
 
+            send_overlay_status("show", "Surrendering...", "red")
             print("Trophy dump: surrendering")
             if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8):
                 print("Surrendering the first village battle to dump trophies.")
@@ -384,7 +404,7 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
                 click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
                 print("Trophy dump: returned home.")
 
+        send_overlay_status("hide")
 if __name__ == "__main__":
     import gui
-    import multiprocessing
     gui.main()

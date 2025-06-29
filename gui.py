@@ -5,18 +5,31 @@ import threading
 import keyboard  # Global hotkey support
 from main import farming_bot_main
 from resources import screen_width, screen_height, use_2k_images
+from overlay_status_proxy import OverlayStatusProxy
+from multiprocessing import Process
 
 bot_process = None
+overlay_status_proxy = None  # Will be initialized in main()
+overlay_process = None
+
+def start_overlay_listener(queue):
+    global overlay_process
+    if overlay_process is None or not overlay_process.is_alive():
+        from overlay_status import overlay_status_listener
+        overlay_process = Process(target=overlay_status_listener, args=(queue,))
+        overlay_process.start()
 
 def start_bot(elixir_freq, ability_cd, trophy_dumping):
-    global bot_process
+    global bot_process, overlay_status_proxy
     if bot_process is None or not bot_process.is_alive():
         ctx = multiprocessing.get_context("spawn")
+        # Pass the overlay queue to the bot process
         bot_process = ctx.Process(
             target=farming_bot_main,
-            args=(elixir_freq, ability_cd, trophy_dumping, screen_width, screen_height, use_2k_images)
+            args=(elixir_freq, ability_cd, trophy_dumping, screen_width, screen_height, use_2k_images, overlay_status_proxy.get_queue())
         )
         bot_process.start()
+        start_overlay_listener(overlay_status_proxy.get_queue())
 
 
 def start_bot_callback(sender, app_data, user_data):
@@ -62,7 +75,7 @@ def global_hotkey_listener():
             time.sleep(0.1)
 
 def cleanup_on_exit():
-    global bot_process
+    global bot_process, overlay_process
     if bot_process is not None and bot_process.is_alive():
         print("Terminating bot process on GUI exit...")
         bot_process.terminate()
@@ -70,8 +83,17 @@ def cleanup_on_exit():
         if bot_process.is_alive():
             print("Warning: Bot process is still running after terminate()")
         bot_process = None
+    if overlay_process is not None and overlay_process.is_alive():
+        print("Terminating overlay process on GUI exit...")
+        overlay_process.terminate()
+        overlay_process.join(timeout=2.0)
+        if overlay_process.is_alive():
+            print("Warning: Overlay process is still running after terminate()")
+        overlay_process = None
 
 def main():
+    global overlay_status_proxy
+    overlay_status_proxy = OverlayStatusProxy()  # Only create here, in main process
     dpg.create_context()
     viewport_width, viewport_height = 900, 700  # You can set your preferred default size
     dpg.create_viewport(title='CoC Builder Base Farming Bot', width=viewport_width, height=viewport_height, resizable=True)
