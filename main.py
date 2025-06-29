@@ -340,23 +340,10 @@ def cast_hero_ability():
         last_ability_time = current_time
 
 
-# Function to handle safe exit
-def safe_exit():
-    print("Performing safe exit...")
-    if bot_process is not None and bot_process.is_alive():
-        try:
-            bot_process.terminate()
-            bot_process.join(timeout=1.0)
-        except:
-            pass
-
 
 # Global thread reference
 bot_thread = None
 
-atexit.register(safe_exit)
-signal.signal(signal.SIGINT, lambda sig, frame: safe_exit())
-signal.signal(signal.SIGTERM, lambda sig, frame: safe_exit())
 
 def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images):
     global elixir_check_counter

@@ -60,6 +60,16 @@ def global_hotkey_listener():
         while keyboard.is_pressed('p'):
             time.sleep(0.1)
 
+def cleanup_on_exit():
+    global bot_process
+    if bot_process is not None and bot_process.is_alive():
+        print("Terminating bot process on GUI exit...")
+        bot_process.terminate()
+        bot_process.join(timeout=2.0)
+        if bot_process.is_alive():
+            print("Warning: Bot process is still running after terminate()")
+        bot_process = None
+
 def main():
     dpg.create_context()
     viewport_width, viewport_height = 900, 700  # You can set your preferred default size
@@ -133,8 +143,11 @@ def main():
     dpg.show_viewport()
     # Start global hotkey listener in a daemon thread
     threading.Thread(target=global_hotkey_listener, daemon=True).start()
-    dpg.start_dearpygui()
-    dpg.destroy_context()
+    try:
+        dpg.start_dearpygui()
+    finally:
+        cleanup_on_exit()
+        dpg.destroy_context()
 
 if __name__ == "__main__":
     main()
