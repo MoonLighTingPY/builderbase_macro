@@ -23,7 +23,6 @@ def resource_path(relative_path):
 
 bot_process = None
 keyboard_thread = None
-stop_event = None  # Will be set in main
 
 # Initialize mss for screen capture
 sct = mss()
@@ -109,21 +108,17 @@ IMAGE_PATHS = {
 # confidence, float, between 0 and 1 that defines the confidence level for the image matching
 # parsemode, boolean, defines whether to return the coordinates of the image instead of clicking it
 # loop, boolean, defines whether to keep trying to find the image until it is found or no
-def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True, scales=[1.0], stop_event=None):
+def click_image(image_path, region=None, confidence=0.85, parsemode=False, loop=True, scales=[1.0]):
     while True:
-        if stop_event is not None and stop_event.is_set():
-            return False
-        result = click_image_core(image_path, region, confidence, parsemode, scales, stop_event=stop_event)
+        result = click_image_core(image_path, region, confidence, parsemode, scales)
         if result:
             return result
         if not loop:
             return result
     else:
-        return click_image_core(image_path, region, confidence, parsemode, scales, stop_event=stop_event)
+        return click_image_core(image_path, region, confidence, parsemode, scales)
 
-def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0, 2.0, 1.75, 1.5, 1.25, 0.75, 0.5], stop_event=None): 
-    if stop_event is not None and stop_event.is_set():
-        return
+def click_image_core(image_path, region=None, confidence=0.85, parsemode=False , scales=[1.0, 2.0, 1.75, 1.5, 1.25, 0.75, 0.5]): 
     try:
         # Create a thread-local instance of mss for thread safety
         with mss() as thread_sct:
@@ -145,8 +140,6 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
 
             # Try different scales to account for different resolutions
             for scale in scales:
-                if stop_event is not None and stop_event.is_set():
-                    return
                 # Resize the template according to the scale
                 width = int(template.shape[1] * scale)
                 height = int(template.shape[0] * scale)
@@ -198,9 +191,7 @@ def click_image_core(image_path, region=None, confidence=0.85, parsemode=False ,
 
 # Function to deploy troops at a specific location
 # This function will move the mouse to the location and click it, then deploy troops using the keys 1-8
-def deploy_troops(location, delay, one_troop_only=False, stop_event=None):
-    if stop_event is not None and stop_event.is_set():
-        return
+def deploy_troops(location, delay, one_troop_only=False):
     pyautogui.moveTo(location)
     pyautogui.click(location)
     if not one_troop_only:
@@ -208,8 +199,6 @@ def deploy_troops(location, delay, one_troop_only=False, stop_event=None):
         troop_keys = ["q", "Q", "1", "2", "3", "4", "5", "6", "7", "8"]
         for _ in range(2):  # Loop twice: first for deployment, second for abilities
             for key in troop_keys:
-                if stop_event is not None and stop_event.is_set():
-                    return
                 time.sleep(random.uniform(0.1, delay))             
                 pydirectinput.press(key)
                 if _ == 0:  # Only click during the first loop (deployment phase)
@@ -217,8 +206,6 @@ def deploy_troops(location, delay, one_troop_only=False, stop_event=None):
                     # random delay to avoid detection (from 0.1 to specified delay)
 
     else:
-        if stop_event is not None and stop_event.is_set():
-            return
         # Deploy only one troop (the first one)
         pydirectinput.press("1")
         time.sleep(delay)
@@ -226,9 +213,7 @@ def deploy_troops(location, delay, one_troop_only=False, stop_event=None):
 
 # Function to check the elixir cart and collect elixir if available
 # This function will check the elixir cart for different states (full, empty, not empty) and collect elixir if available
-def check_elixir(stop_event=None):
-    if stop_event is not None and stop_event.is_set():
-        return
+def check_elixir():
     # Define image pairs (cart image, collect button, cart confidence, button confidence)
     image_pairs = [
         ("elixir_cart_0", "collect_full", 0.55, 0.7),
@@ -242,34 +227,26 @@ def check_elixir(stop_event=None):
 
     # Scroll so the elixir cart is visible in case it is not
     for _ in range(3):
-        if stop_event is not None and stop_event.is_set():
-            return
         # Move mouse to the middle of the screen to zoom in
 
         pyautogui.moveTo(screen_width // 2, screen_height // 2)
         for _ in range(10):
-            if stop_event is not None and stop_event.is_set():
-                return
             pyautogui.scroll(25000)
             time.sleep(0.02)
         # Move mouse to the bottom of the screen to zoom out and outwards, this will move the screen up (elixir cart is at the top of the base)
         pyautogui.moveTo(screen_width // 2, screen_height - 100)
         for _ in range(10):
-            if stop_event is not None and stop_event.is_set():
-                return
             pyautogui.scroll(-25000)
             time.sleep(0.02)
     pyautogui.scroll(500)
 
     # Try to find and click the elixir cart and collect it
     for cart_img, collect_img, cart_conf, btn_conf in image_pairs:
-        if stop_event is not None and stop_event.is_set():
-            return
-        if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf, stop_event=stop_event):
+        if click_image(IMAGE_PATHS[cart_img], loop=False, confidence=cart_conf):
             time.sleep(0.3)
-            if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"], stop_event=stop_event):
+            if click_image(IMAGE_PATHS[collect_img], loop=False, confidence=btn_conf, region=regions["bottom_right"]):
                 time.sleep(0.3)
-                click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7, stop_event=stop_event)
+                click_image(IMAGE_PATHS["close_elixir"], region=regions["top_right"], confidence=0.7)
                 return True  # Success
             else:
                 print(f"Collect button {collect_img} not found for cart {cart_img}.")
@@ -278,23 +255,14 @@ def check_elixir(stop_event=None):
     return False  # Indicate that a restart is needed
 
 # Add a dedicated function to check and dismiss star bonus popup
-def check_and_dismiss_star_bonus(stop_event=None):
-    if stop_event is not None and stop_event.is_set():
-        return
+def check_and_dismiss_star_bonus():
     """Check for star bonus popup and dismiss it if found"""
 
     # Wait for star bonus popup to appear and dismiss it
-    # update_overlay_status("Waiting for starbonus (0s.)", color="yellow", root=root)
     print("Waiting for star bonus popup...")
     time.sleep(1)
-    if stop_event is not None and stop_event.is_set():
-        return
-    # update_overlay_status("Waiting for starbonus (1s.)", color="yellow", root=root)
     time.sleep(1)   
-    # update_overlay_status("Waiting for starbonus (2s.)", color="yellow", root=root)
-    if stop_event is not None and stop_event.is_set():
-        return
-    if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False, stop_event=stop_event):
+    if click_image_core(IMAGE_PATHS["okay_starbonus"], confidence=0.7, region=regions["bottom_half"], parsemode=False):
         print("Star bonus popup detected and dismissed")
         time.sleep(0.3)
         return True
@@ -304,9 +272,7 @@ def check_and_dismiss_star_bonus(stop_event=None):
 # Function to find the warplace and deploy troops
 # This function will try to find the warplace image and deploy troops at that location
 # If the warplace image is not found, it will try to click random places on the screen until a troop is deployed
-def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False, stop_event=None):
-    if stop_event is not None and stop_event.is_set():
-        return
+def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False):
     found_warplace = False # Flag to indicate if the warplace was found
 
     # Choose the test troop key based on whether it's the second battle
@@ -314,13 +280,9 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
 
     # Try to find the warplace image and deploy troops
     for path in IMAGE_PATHS["warplace"]:
-        if stop_event is not None and stop_event.is_set():
-            return
-        warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False, stop_event=stop_event)
+        warplace_location = click_image(path, region=regions["whole_screen"], parsemode=True, confidence=0.7, loop=False)
         
         if warplace_location:
-            if stop_event is not None and stop_event.is_set():
-                return
             # First, test if the location is valid by deploying one troop
             pyautogui.moveTo(warplace_location)
             pyautogui.click(warplace_location)
@@ -329,14 +291,12 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
             pyautogui.click(warplace_location)
             time.sleep(0.2)  # Wait a bit for the troop to be deployed
             
-            if stop_event is not None and stop_event.is_set():
-                return
             # Check if the troop was actually deployed by looking for "ends_in"
-            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True, stop_event=stop_event):
+            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print(f"Test troop deployed successfully at {warplace_location}! Deploying all troops...")
                 # If successful and not one_troop_only, deploy all remaining troops
                 if not one_troop_only:
-                    deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=False, stop_event=stop_event)
+                    deploy_troops(warplace_location, delay=troop_deploy_delay, one_troop_only=False)
                 found_warplace = True
                 return  
             else:
@@ -344,12 +304,8 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
 
     # If warplace images failed, try the fallback method
     if not found_warplace:
-        if stop_event is not None and stop_event.is_set():
-            return
         print(f"Could not deploy troops using warplace images. Trying fallback method.")
         for _ in range(15):  # Try clicking N random places
-            if stop_event is not None and stop_event.is_set():
-                return
             # Click random places in the top half of the screen
             random_x = np.random.randint(regions["top_half"][0], regions["top_half"][2])
             random_y = np.random.randint(regions["top_half"][1], regions["top_half"][3])
@@ -363,23 +319,21 @@ def find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False
             time.sleep(0.1)
 
             # Check if the troop was deployed successfully
-            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True, stop_event=stop_event):
+            if click_image(IMAGE_PATHS["ends_in"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("Test troop deployed successfully using fallback method!")
                 # If successful and not one_troop_only, deploy all remaining troops
                 if not one_troop_only:
-                    deploy_troops((random_x, random_y), delay=troop_deploy_delay, one_troop_only=False, stop_event=stop_event)
+                    deploy_troops((random_x, random_y), delay=troop_deploy_delay, one_troop_only=False)
                 return  # Exit after success
                 
     # If we reach here, it means we couldn't deploy troops at any location
     print("Failed to deploy troops at any location. Ending battle.")
-    if click_image(IMAGE_PATHS["end_battle"], region=regions["bottom_right"], loop=False, confidence=0.7, stop_event=stop_event):
+    if click_image(IMAGE_PATHS["end_battle"], region=regions["bottom_right"], loop=False, confidence=0.7):
         time.sleep(0.3)
-        click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7, stop_event=stop_event)
+        click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7)
         print("Battle ended due to failed troop deployment.")
 
-def cast_hero_ability(stop_event=None):
-    if stop_event is not None and stop_event.is_set():
-        return
+def cast_hero_ability():
     # Periodically cast the hero ability to help the troops
     global last_ability_time
     current_time = time.time()
@@ -388,7 +342,7 @@ def cast_hero_ability(stop_event=None):
         last_ability_time = current_time
 
 # Function that runs in a separate thread to monitor pause bot key press 
-def keyboard_listener(stop_event):
+def keyboard_listener():
     try:
         keyboard.wait('p')  # Wait for the 'p' key to be pressed
         print("P key pressed, stopping bot...")
@@ -414,39 +368,37 @@ atexit.register(safe_exit)
 signal.signal(signal.SIGINT, lambda sig, frame: safe_exit())
 signal.signal(signal.SIGTERM, lambda sig, frame: safe_exit())
 
-def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images, stop_event):
+def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images):
     global elixir_check_counter
     print("Bot process started")
-    while not stop_event.is_set():
+    while True:
         if not trophy_dumping_mode:
             # Check if the game is open in the builder base by looking for the attack button
             print("Waiting for Builder Base...")
-            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True, stop_event=stop_event):
+            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
                 print("Game is open in the builder base, starting bot...")
 
             # Check for star bonus popup before starting the battle
-            check_and_dismiss_star_bonus(stop_event=stop_event)
+            check_and_dismiss_star_bonus()
 
             elixir_check_counter += 1
             if elixir_check_counter >= elixir_check_frequency:
                 elixir_check_counter = 0
                 print("Checking for elixir this iteration")
-                check_elixir(stop_event=stop_event)
+                check_elixir()
 
             # Press the attack button to open the battle menu
             print("Starting battle")
-            click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, stop_event=stop_event)
+            click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
 
             # Simple click for battle_start - no special handling needed
-            click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7, stop_event=stop_event)
+            click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
             # Wait for troops menu to appear before deploying troops
             print("Waiting for battle")
             while True:
-                if stop_event.is_set():
-                        return
-                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95, stop_event=stop_event):
+                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                     print("Battle verify found, troops menu is ready.")
                     
                     time.sleep(0.5)
@@ -458,98 +410,95 @@ def farming_bot_main(elixir_check_frequency, ability_cooldown, trophy_dumping_mo
 
 
             print("Deploying troops for the first village...")
-            find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False, stop_event=stop_event)
+            find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=False)
 
             # Wait for the first battle to finish
             print("1st Battle in progress...")
             battle_finished = False
-            while not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True, stop_event=stop_event):
+            while not click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, confidence=0.95, parsemode=True):
                 print("First village battle is not finished yet.")
-                if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7, stop_event=stop_event):
+                if click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                     battle_finished = True
                     print("First village battle didn't advance to the second village. Returning home.")
                     time.sleep(0.5)
-                    check_and_dismiss_star_bonus(stop_event=stop_event)
+                    check_and_dismiss_star_bonus()
                     break
-                cast_hero_ability(stop_event=stop_event)
+                cast_hero_ability()
 
 
             if battle_finished == False:
                 print("Battle advanced to the second village.")
                 time.sleep(1)
                 print("Deploying troops for the second village...")
-                find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True, stop_event=stop_event)
+                find_warplace_and_deploy_troops(one_troop_only=False, is_second_battle=True)
 
                 print("2nd Battle in progress...")
-                while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7, stop_event=stop_event):
+                while not click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7):
                     print("Second village battle not finished yet.")
-                    cast_hero_ability(stop_event=stop_event)
+                    cast_hero_ability()
 
 
                 print("Battle finished, returning home...")
 
         elif trophy_dumping_mode:
             print("Trophy dump: waiting for Builder Base...")
-            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True, stop_event=stop_event):
+            if click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, parsemode=True):
                 print("Game is open in the builder base, starting bot...")
 
             elixir_check_counter += 1
             if elixir_check_counter >= elixir_check_frequency:
                 elixir_check_counter = 0
                 print("Checking for elixir this iteration")
-                check_elixir(stop_event=stop_event)
+                check_elixir()
 
             print("Trophy dump: Starting battle")
-            click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7, stop_event=stop_event)
+            click_image(IMAGE_PATHS["battle_open"], region=regions["bottom_left"], confidence=0.7)
             time.sleep(0.3)
 
-            click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7, stop_event=stop_event)
+            click_image(IMAGE_PATHS["battle_start"], region=regions["bottom_right"], confidence=0.7)
 
 
             print("Trophy dump: Waiting for battle...")
             while True:
-                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95, stop_event=stop_event):
+                if click_image(IMAGE_PATHS["battle_verify"], region=regions["top_half"], loop=False, parsemode=True, confidence=0.95):
                     print("Battle verify found, troops menu is ready.")
                     break
 
 
             print("Trophy dump: deploying one troop...")
-            find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False, stop_event=stop_event)
+            find_warplace_and_deploy_troops(one_troop_only=True, is_second_battle=False)
 
             print("Trophy dump: surrendering")
-            if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8, stop_event=stop_event):
+            if click_image(IMAGE_PATHS["surrender"], region=regions["bottom_left"], loop=True, confidence=0.8):
                 print("Surrendering the first village battle to dump trophies.")
                 time.sleep(0.3)
-                click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7, stop_event=stop_event)
+                click_image(IMAGE_PATHS["confirm_surrender"], region=regions["bottom_right"], loop=False, confidence=0.7)
                 time.sleep(0.3)
-                click_image(IMAGE_PATHS["return_home"], loop=True, confidence=0.7, stop_event=stop_event)
+                click_image(IMAGE_PATHS["return_home"], loop=True, confidence=0.7)
                 time.sleep(0.3)
-                click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7, stop_event=stop_event)
+                click_image(IMAGE_PATHS["return_home"], loop=False, confidence=0.7)
                 print("Trophy dump: returned home.")
 
 
 def start_bot(elixir_freq, ability_cd, trophy_dumping):
-    global bot_process, keyboard_thread, elixir_check_frequency, elixir_check_counter, ability_cooldown, trophy_dumping_mode, stop_event
+    global bot_process, keyboard_thread, elixir_check_frequency, elixir_check_counter, ability_cooldown, trophy_dumping_mode
     elixir_check_counter = 0
     elixir_check_frequency = elixir_freq
     ability_cooldown = ability_cd
     trophy_dumping_mode = trophy_dumping
-    stop_event.clear()
     if bot_process is None or not bot_process.is_alive():
-        bot_process = multiprocessing.Process(
+        ctx = multiprocessing.get_context("spawn")
+        bot_process = ctx.Process(
             target=farming_bot_main,
-            args=(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images, stop_event)
+            args=(elixir_check_frequency, ability_cooldown, trophy_dumping_mode, screen_width, screen_height, use_2k_images)
         )
         bot_process.start()
-        keyboard_thread = threading.Thread(target=keyboard_listener, args=(stop_event,))
+        keyboard_thread = threading.Thread(target=keyboard_listener)
         keyboard_thread.daemon = True
         keyboard_thread.start()
 
-
 def stop_bot():
-    global bot_process, keyboard_thread, stop_event
-    if stop_event is not None:
-        stop_event.set()
+    global bot_process, keyboard_thread
     if bot_process is not None and bot_process.is_alive():
         print("Stopping bot process instantly...")
         bot_process.terminate()
@@ -562,6 +511,4 @@ def stop_bot():
 if __name__ == "__main__":
     import gui
     import multiprocessing
-    manager = multiprocessing.Manager()
-    stop_event = manager.Event()
-    gui.main(stop_event)
+    gui.main()

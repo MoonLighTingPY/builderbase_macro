@@ -1,13 +1,12 @@
 import dearpygui.dearpygui as dpg
 import multiprocessing
 import time
-from main import farming_bot_main, use_2k_images, screen_width, screen_height, stop_bot
+from main import farming_bot_main, use_2k_images, screen_width, screen_height
 
 bot_process = None
-stop_event = None  # Add this at the top of gui.py
 
 def start_bot_callback(sender, app_data, user_data):
-    global bot_process, stop_event
+    global bot_process
     elixir_freq = dpg.get_value("elixir_freq")
     ability_cd = dpg.get_value("ability_cd")
     trophy_dumping = dpg.get_value("trophy_dumping")
@@ -16,18 +15,23 @@ def start_bot_callback(sender, app_data, user_data):
     if bot_process is None or not bot_process.is_alive():
         bot_process = multiprocessing.Process(
             target=farming_bot_main,
-            args=(elixir_freq, ability_cd, trophy_dumping, screen_width, screen_height, use_2k_images, stop_event)
+            args=(elixir_freq, ability_cd, trophy_dumping, screen_width, screen_height, use_2k_images)
         )
         bot_process.start()
 
 def stop_bot_callback(sender, app_data, user_data):
-    stop_bot()
+    global bot_process
+    if bot_process is not None and bot_process.is_alive():
+        print("Stopping bot process instantly...")
+        bot_process.terminate()
+        bot_process.join(timeout=2.0)
+        if bot_process.is_alive():
+            print("Warning: Bot process is still running after terminate()")
+        bot_process = None
     dpg.set_value("status_text", "Stopped")
     dpg.set_value("log", dpg.get_value("log") + "Bot stopped.\n")
 
-def main(event):
-    global stop_event
-    stop_event = event
+def main():
     dpg.create_context()
     viewport_width, viewport_height = 900, 700  # You can set your preferred default size
     dpg.create_viewport(title='CoC Builder Base Farming Bot', width=viewport_width, height=viewport_height, resizable=True)
