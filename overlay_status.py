@@ -54,11 +54,32 @@ class OverlayStatus(QtWidgets.QWidget):
         painter.setBrush(color)
         painter.setPen(QtCore.Qt.NoPen)
         painter.drawRoundedRect(self.rect(), 10, 10)
-        painter.setPen(QtGui.QColor("#fff"))
+
+        # Calculate luminance to determine if background is bright
+        r, g, b = color.red(), color.green(), color.blue()
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+
         font = painter.font()
         font.setPointSize(14)
         painter.setFont(font)
-        painter.drawText(self.rect(), QtCore.Qt.AlignCenter, self.text)
+
+        rect = self.rect()
+        text = self.text
+
+        if luminance > 100:
+            # Bright background: draw black outline, then white text
+            painter.setPen(QtGui.QColor("#000"))
+            # Draw text outline by offsetting in 8 directions
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx != 0 or dy != 0:
+                        painter.drawText(rect.translated(dx, dy), QtCore.Qt.AlignCenter, text)
+            painter.setPen(QtGui.QColor("#fff"))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, text)
+        else:
+            # Dark background: just white text
+            painter.setPen(QtGui.QColor("#fff"))
+            painter.drawText(rect, QtCore.Qt.AlignCenter, text)
 
 _overlay_instance = None
 

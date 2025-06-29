@@ -1,31 +1,23 @@
 from PyQt5 import QtWidgets
 import sys
-app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-
-import multiprocessing
 import pydirectinput
 import pyautogui
 import time
-import os
-import sys
 import cv2
 import numpy as np
 from mss import mss
-import signal
-import atexit
 import random
 from resources import (
-    resource_path,
     screen_width,
     screen_height,
-    use_2k_images,
-    image_dir,
     regions,
     IMAGE_PATHS,
 )
 from overlay_status import update_overlay_status, hide_overlay_status
 
-update_overlay_status("Bot Running", color="green")
+app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+update_overlay_status("Starting...", "orange")
+
 # Initialize mss for screen capture
 sct = mss()
 
